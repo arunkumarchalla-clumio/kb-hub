@@ -95,22 +95,8 @@ export function markdownToDocxParagraphs(markdown: string): Paragraph[] {
   return paragraphs;
 }
 
-export async function buildKBDocx(markdown: string, tldr: string): Promise<Buffer> {
-  const bodyParagraphs: Paragraph[] = [];
-
-  if (tldr) {
-    bodyParagraphs.push(
-      new Paragraph({
-        children: [
-          new TextRun({ text: "TL;DR: ", bold: true }),
-          new TextRun({ text: tldr, italics: true }),
-        ],
-      }),
-      new Paragraph({ text: "" })
-    );
-  }
-
-  bodyParagraphs.push(...markdownToDocxParagraphs(markdown));
+export async function buildKBDocx(markdown: string): Promise<Buffer> {
+  const bodyParagraphs: Paragraph[] = markdownToDocxParagraphs(markdown);
 
   const doc = new Document({
     numbering: {

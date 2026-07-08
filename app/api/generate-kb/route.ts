@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { markdown, tldr } = await generateKBArticle(fields);
-    return NextResponse.json({ markdown, tldr });
+    const markdown = await generateKBArticle(fields);
+    return NextResponse.json({ markdown });
   } catch (err) {
     console.error("generate-kb error:", err);
     return NextResponse.json(

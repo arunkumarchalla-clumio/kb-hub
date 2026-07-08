@@ -7,6 +7,8 @@ import type { KBFormFields } from "@/lib/types";
 
 const EMPTY_FIELDS: KBFormFields = {
   title: "",
+  issueType: "",
+  primaryEntityType: "",
   category: "",
   productVersion: "",
   audience: "Internal",
@@ -22,6 +24,8 @@ const DRAFT_STORAGE_KEY = "kb-creator-draft-v1";
 function hasAnyContent(fields: KBFormFields): boolean {
   return Boolean(
     fields.title.trim() ||
+      fields.issueType.trim() ||
+      fields.primaryEntityType.trim() ||
       fields.category.trim() ||
       fields.productVersion.trim() ||
       fields.symptoms.trim() ||
@@ -41,7 +45,6 @@ export default function Home() {
   const [ticket, setTicket] = useState("KB-----");
   const [fields, setFields] = useState<KBFormFields>(EMPTY_FIELDS);
   const [markdown, setMarkdown] = useState("");
-  const [tldr, setTldr] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [restoredDraft, setRestoredDraft] = useState(false);
@@ -99,7 +102,6 @@ export default function Home() {
         throw new Error(data.error || "Something went wrong.");
       }
       setMarkdown(data.markdown);
-      setTldr(data.tldr || "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -142,7 +144,6 @@ export default function Home() {
         />
         <KBPreview
           markdown={markdown}
-          tldr={tldr}
           loading={loading}
           ticket={ticket}
           onMarkdownChange={setMarkdown}

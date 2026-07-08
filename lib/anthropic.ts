@@ -6,19 +6,11 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const TLDR_DELIMITER = "===ARTICLE===";
-
-const BASE_STRUCTURE = `Output format (follow exactly, no other preamble or closing remarks):
-
-Line 1: a single line starting with "TLDR:" followed by one plain sentence, 15 words or fewer, stating the issue and the fix in the fewest words possible. This is a scanning aid shown separately from the article, not part of the article body.
-
-Line 2: exactly this delimiter on its own line: ${TLDR_DELIMITER}
-
-After the delimiter, the full Markdown article in exactly this structure and order:
+const BASE_STRUCTURE = `Always output ONLY Markdown, in exactly this structure and order, with no preamble or closing remarks:
 
 # {Title}
 
-**Summary:** 1-3 sentence summary of the issue and the fix. (Write this normally — it's fuller than the TLDR line, not a duplicate of it.)
+**Summary:** 1-3 sentence summary of the issue and the fix.
 
 ## Symptoms
 - Bullet list of observable symptoms.
@@ -30,7 +22,7 @@ Short paragraph explaining the root cause.
 1. Numbered, imperative-voice steps.
 
 ## Applies To
-- Product/Version and Audience as bullet points.
+- Product/Version, Audience, Issue Type, and Primary Entity Type, as bullet points.
 
 ## FAQ
 2-3 likely follow-up questions a reader would have after reading this article, each as "**Q: ...**" followed by a concise answer on the next line. Only ask questions you can actually answer from the given fields (e.g. "What if the steps don't fix it?", "Does this affect other versions?", "Is a restart required?") — do not invent questions whose answers would require information not provided.
@@ -58,17 +50,14 @@ ${TONE_INSTRUCTIONS[tone]}
 ${BASE_STRUCTURE}`;
 }
 
-export interface GeneratedArticle {
-  markdown: string;
-  tldr: string;
-}
-
-export async function generateKBArticle(fields: KBFormFields): Promise<GeneratedArticle> {
+export async function generateKBArticle(fields: KBFormFields): Promise<string> {
   const tone: ArticleTone = TONE_INSTRUCTIONS[fields.tone] ? fields.tone : "technical";
 
   const userPrompt = `Generate a KB article from these fields:
 
 Title: ${fields.title || "(not provided)"}
+Issue Type: ${fields.issueType || "(not provided)"}
+Primary Entity Type: ${fields.primaryEntityType || "(not provided)"}
 Category: ${fields.category || "(not provided)"}
 Product/Version: ${fields.productVersion || "(not provided)"}
 Audience: ${fields.audience || "(not provided)"}
@@ -89,18 +78,5 @@ Keywords: ${fields.keywords || "(not provided)"}`;
     throw new Error("No text content returned from Claude");
   }
 
-  return parseGeneratedArticle(textBlock.text);
-}
-
-// Exported for testing. Falls back gracefully to an empty TLDR if the model
-// didn't follow the delimiter format for any reason, rather than failing.
-export function parseGeneratedArticle(raw: string): GeneratedArticle {
-  const idx = raw.indexOf(TLDR_DELIMITER);
-  if (idx === -1) {
-    return { markdown: raw.trim(), tldr: "" };
-  }
-  const head = raw.slice(0, idx).trim();
-  const markdown = raw.slice(idx + TLDR_DELIMITER.length).trim();
-  const tldr = head.replace(/^TLDR:\s*/i, "").trim();
-  return { markdown, tldr };
+  return textBlock.text.trim();
 }

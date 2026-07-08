@@ -22,9 +22,9 @@ This file is the first thing Claude Code reads when it opens this project. Keep 
 
 ## How KB article generation works
 
-1. The user fills out `KBForm.tsx`: Title, Category, Product/Version, Problem/Symptoms, Cause, Resolution Steps, Audience, Keywords.
+1. The user fills out `KBForm.tsx`: Title, Type, Primary Entity Type, Category, Product/Version, Audience, Symptoms, Cause, Resolution Steps, Keywords.
 2. On submit, the form POSTs the field values to `/api/generate-kb`.
-3. The route handler builds a prompt from the fields and calls Claude (see `lib/anthropic.ts` for the system prompt — it enforces a consistent KB structure: Title, Summary, Symptoms, Cause, Resolution, Applies To, Keywords).
+3. The route handler builds a prompt from the fields and calls Claude (see `lib/anthropic.ts` for the system prompt — it enforces a consistent KB structure: Title, Summary, Symptoms, Cause, Resolution, Applies To, FAQ, Keywords).
 4. The response streams or returns Markdown, which `KBPreview.tsx` renders and lets the user copy or download as `.md`.
 
 ## Conventions to follow

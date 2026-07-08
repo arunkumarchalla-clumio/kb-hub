@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { analyzeKeywords, parseKeywordList, type KeywordStrength } from "@/lib/keywordCheck";
-import { ISSUE_TEMPLATES } from "@/lib/templates";
 import {
   AUDIENCE_OPTIONS,
   AUDIENCE_TONE_MAP,
@@ -19,6 +18,26 @@ interface Props {
 }
 
 const STEPS = ["Basics", "Symptoms & Cause", "Resolution", "Review"] as const;
+
+const ISSUE_TYPE_OPTIONS = [
+  "Backup Failed",
+  "Backup Missed",
+  "Restore Failed",
+  "Archive Backup Failed",
+];
+
+const ENTITY_TYPE_OPTIONS = [
+  "RDS Instance",
+  "RDS Cluster",
+  "DynamoDB",
+  "EC2 Instance",
+  "EBS Volume",
+  "CFT",
+  "MSSQL Server",
+  "DocumentDB",
+];
+
+const OTHER_VALUE = "__other__";
 
 const TONE_LABELS: Record<KBFormFields["tone"], string> = {
   technical: "Technical (IT admins)",
@@ -65,6 +84,63 @@ function Field({
 const inputClass =
   "w-full rounded-sm border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink/30 focus:border-forest";
 
+// A dropdown of preset options with a fallback free-text entry for anything
+// not on the list — used for Issue Type and Primary Entity Type, which have
+// common values but shouldn't block on an exhaustive list.
+function SelectOrCustom({
+  label,
+  options,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const isKnownOption = value !== "" && options.includes(value);
+  const [customMode, setCustomMode] = useState(value !== "" && !isKnownOption);
+
+  return (
+    <Field label={label}>
+      <select
+        className={inputClass}
+        value={customMode ? OTHER_VALUE : value}
+        onChange={(e) => {
+          if (e.target.value === OTHER_VALUE) {
+            setCustomMode(true);
+            onChange("");
+          } else {
+            setCustomMode(false);
+            onChange(e.target.value);
+          }
+        }}
+      >
+        <option value="" disabled>
+          Select…
+        </option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+        <option value={OTHER_VALUE}>Other (specify)</option>
+      </select>
+      {customMode && (
+        <input
+          className={`${inputClass} mt-2`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoFocus
+        />
+      )}
+    </Field>
+  );
+}
+
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-line py-2 last:border-0">
@@ -96,19 +172,11 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
     set("keywords", [...current, word].join(", "));
   }
 
-  function applyTemplate(templateId: string) {
-    const template = ISSUE_TEMPLATES.find((t) => t.id === templateId);
-    if (!template) return;
-    const merged: KBFormFields = { ...fields, ...template.values };
-    if (template.values.audience) {
-      merged.tone = AUDIENCE_TONE_MAP[template.values.audience];
-    }
-    onChange(merged);
-  }
-
   function hasContent(f: KBFormFields): boolean {
     return Boolean(
       f.title.trim() ||
+        f.issueType.trim() ||
+        f.primaryEntityType.trim() ||
         f.category.trim() ||
         f.productVersion.trim() ||
         f.symptoms.trim() ||
@@ -124,6 +192,8 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
     }
     onChange({
       title: "",
+      issueType: "",
+      primaryEntityType: "",
       category: "",
       productVersion: "",
       audience: "Internal",
@@ -151,7 +221,16 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
 
   return (
     <section className="rounded-sm border border-line bg-white/60 p-6">
-      <h2 className="font-display text-lg font-700">Intake</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-700">Intake</h2>
+        <button
+          type="button"
+          onClick={clearForm}
+          className="text-[11px] text-ink/40 underline-offset-2 hover:text-ink/70 hover:underline"
+        >
+          Clear all
+        </button>
+      </div>
       <p className="mt-1 text-sm text-ink/60">
         Fill in what you know. Leave the rest blank — the article will say so plainly.
       </p>
@@ -199,55 +278,40 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
       >
         {step === 0 && (
           <>
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] uppercase tracking-widest text-ink/60">
-                  Start from a template
-                </span>
-                <button
-                  type="button"
-                  onClick={clearForm}
-                  className="text-[11px] text-ink/40 underline-offset-2 hover:text-ink/70 hover:underline"
-                >
-                  Clear all
-                </button>
-              </div>
-              <div className="mt-1.5 grid grid-cols-3 gap-2">
-                {ISSUE_TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    type="button"
-                    onClick={() => applyTemplate(template.id)}
-                    className="rounded-sm border border-line bg-white px-3 py-2 text-left text-sm text-ink/70 transition hover:border-forest hover:bg-forest/5 hover:text-forest-dark"
-                  >
-                    <span className="block font-semibold">{template.label}</span>
-                    <span className="block text-[11px] text-ink/45">
-                      {template.description}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-1.5 text-[11px] text-ink/40">
-                Fills in example content you can edit — it won&apos;t touch your Title.
-              </p>
-            </div>
-
             <Field label="Title" hint="required">
               <input
                 autoFocus
                 className={inputClass}
                 value={fields.title}
                 onChange={(e) => set("title", e.target.value)}
-                placeholder="e.g. VPN client fails to connect on Windows 11"
+                placeholder="e.g. EBS volume backup fails after volume deletion"
               />
             </Field>
+
+            <div className="grid grid-cols-2 gap-4">
+              <SelectOrCustom
+                label="Type"
+                options={ISSUE_TYPE_OPTIONS}
+                value={fields.issueType}
+                onChange={(v) => set("issueType", v)}
+                placeholder="e.g. Backup Skipped"
+              />
+              <SelectOrCustom
+                label="Primary Entity Type"
+                options={ENTITY_TYPE_OPTIONS}
+                value={fields.primaryEntityType}
+                onChange={(v) => set("primaryEntityType", v)}
+                placeholder="e.g. S3 Bucket"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <Field label="Category">
                 <input
                   className={inputClass}
                   value={fields.category}
                   onChange={(e) => set("category", e.target.value)}
-                  placeholder="Networking"
+                  placeholder="Backup & Recovery"
                 />
               </Field>
               <Field label="Product / Version">
@@ -255,7 +319,7 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
                   className={inputClass}
                   value={fields.productVersion}
                   onChange={(e) => set("productVersion", e.target.value)}
-                  placeholder="GlobalProtect 6.2"
+                  placeholder="Clumio 6.2"
                 />
               </Field>
             </div>
@@ -382,6 +446,8 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
 
             <div className="rounded-sm border border-line bg-white p-4">
               <ReviewRow label="Title" value={fields.title} />
+              <ReviewRow label="Type" value={fields.issueType} />
+              <ReviewRow label="Primary Entity Type" value={fields.primaryEntityType} />
               <ReviewRow label="Category" value={fields.category} />
               <ReviewRow label="Product / Version" value={fields.productVersion} />
               <ReviewRow label="Audience" value={fields.audience} />

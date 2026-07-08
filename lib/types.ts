@@ -17,6 +17,8 @@ export const AUDIENCE_TONE_MAP: Record<Audience, ArticleTone> = {
 
 export interface KBFormFields {
   title: string;
+  issueType: string;
+  primaryEntityType: string;
   category: string;
   productVersion: string;
   audience: Audience;
@@ -33,7 +35,6 @@ export interface GenerateKBRequest {
 
 export interface GenerateKBResponse {
   markdown: string;
-  tldr: string;
 }
 
 export interface GenerateKBError {

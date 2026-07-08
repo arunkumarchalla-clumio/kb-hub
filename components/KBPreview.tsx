@@ -5,7 +5,6 @@ import ReactMarkdown from "react-markdown";
 
 interface Props {
   markdown: string;
-  tldr: string;
   loading: boolean;
   ticket: string;
   onMarkdownChange: (markdown: string) => void;
@@ -13,7 +12,6 @@ interface Props {
 
 export default function KBPreview({
   markdown,
-  tldr,
   loading,
   ticket,
   onMarkdownChange,
@@ -35,17 +33,8 @@ export default function KBPreview({
     ? "bg-forest/10 text-forest-dark border-forest/40"
     : "bg-ink/5 text-ink/50 border-line";
 
-  // Include the TL;DR as a quoted line above the article in exported/copied
-  // content too, so it isn't lost outside the portal's UI.
-  function exportableContent() {
-    if (tldr) {
-      return `> **TL;DR:** ${tldr}\n\n${markdown}`;
-    }
-    return markdown;
-  }
-
   function download() {
-    const blob = new Blob([exportableContent()], { type: "text/markdown" });
+    const blob = new Blob([markdown], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -56,7 +45,7 @@ export default function KBPreview({
 
   function copy() {
     navigator.clipboard
-      .writeText(exportableContent())
+      .writeText(markdown)
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -72,7 +61,7 @@ export default function KBPreview({
       const res = await fetch("/api/export/docx", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown, tldr, filename: ticket }),
+        body: JSON.stringify({ markdown, filename: ticket }),
       });
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
@@ -101,9 +90,6 @@ export default function KBPreview({
     }
 
     const bodyHtml = document.getElementById("kb-article-content")?.innerHTML || "";
-    const tldrHtml = tldr
-      ? `<div class="tldr"><strong>TL;DR:</strong> ${tldr}</div>`
-      : "";
 
     printWindow.document.write(`
       <html>
@@ -113,7 +99,6 @@ export default function KBPreview({
             body { font-family: Georgia, 'Times New Roman', serif; color: #1B2430; max-width: 720px; margin: 48px auto; line-height: 1.6; padding: 0 24px; }
             h1 { font-size: 26px; margin-bottom: 4px; }
             h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #2F6F4E; margin-top: 28px; border-bottom: 1px solid #D8DDD9; padding-bottom: 4px; }
-            .tldr { background: #F0DCC0; border: 1px solid #C98A3B; border-radius: 3px; padding: 10px 14px; margin-bottom: 20px; font-family: system-ui, sans-serif; font-size: 14px; }
             code { font-family: 'SFMono-Regular', Consolas, monospace; background: #f2f2f0; padding: 1px 4px; border-radius: 2px; font-size: 13px; }
             pre code { display: block; padding: 10px; overflow-x: auto; }
             ol, ul { padding-left: 22px; }
@@ -121,7 +106,6 @@ export default function KBPreview({
           </style>
         </head>
         <body>
-          ${tldrHtml}
           ${bodyHtml}
         </body>
       </html>
@@ -145,15 +129,6 @@ export default function KBPreview({
       </div>
 
       <div className="mt-1 font-mono text-[11px] text-ink/40">{ticket}</div>
-
-      {tldr && (
-        <div className="mt-4 flex items-start gap-2 rounded-sm border border-amber/40 bg-amber-light/50 px-3 py-2">
-          <span className="mt-0.5 shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest text-amber-900">
-            TL;DR
-          </span>
-          <p className="text-sm text-ink/85">{tldr}</p>
-        </div>
-      )}
 
       {markdown && (
         <div className="mt-4 flex gap-1 rounded-sm border border-line bg-white/70 p-1 text-sm">
