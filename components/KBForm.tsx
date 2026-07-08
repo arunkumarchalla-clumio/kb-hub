@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { analyzeKeywords, parseKeywordList, type KeywordStrength } from "@/lib/keywordCheck";
+import { ISSUE_TEMPLATES } from "@/lib/templates";
 import {
   AUDIENCE_OPTIONS,
   AUDIENCE_TONE_MAP,
@@ -95,6 +96,30 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
     set("keywords", [...current, word].join(", "));
   }
 
+  function applyTemplate(templateId: string) {
+    const template = ISSUE_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+    const merged: KBFormFields = { ...fields, ...template.values };
+    if (template.values.audience) {
+      merged.tone = AUDIENCE_TONE_MAP[template.values.audience];
+    }
+    onChange(merged);
+  }
+
+  function clearForm() {
+    onChange({
+      title: "",
+      category: "",
+      productVersion: "",
+      audience: "Internal",
+      symptoms: "",
+      cause: "",
+      resolutionSteps: "",
+      keywords: "",
+      tone: "technical",
+    });
+  }
+
   const keywordAnalysis = analyzeKeywords(fields);
   const keywordStyle = KEYWORD_STRENGTH_STYLES[keywordAnalysis.strength];
 
@@ -158,6 +183,39 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
       >
         {step === 0 && (
           <>
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[11px] uppercase tracking-widest text-ink/60">
+                  Start from a template
+                </span>
+                <button
+                  type="button"
+                  onClick={clearForm}
+                  className="text-[11px] text-ink/40 underline-offset-2 hover:text-ink/70 hover:underline"
+                >
+                  Clear all
+                </button>
+              </div>
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
+                {ISSUE_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => applyTemplate(template.id)}
+                    className="rounded-sm border border-line bg-white px-3 py-2 text-left text-sm text-ink/70 transition hover:border-forest hover:bg-forest/5 hover:text-forest-dark"
+                  >
+                    <span className="block font-semibold">{template.label}</span>
+                    <span className="block text-[11px] text-ink/45">
+                      {template.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11px] text-ink/40">
+                Fills in example content you can edit — it won&apos;t touch your Title.
+              </p>
+            </div>
+
             <Field label="Title" hint="required">
               <input
                 autoFocus

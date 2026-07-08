@@ -78,7 +78,13 @@ export default function Home() {
           loading={loading}
           error={error}
         />
-        <KBPreview markdown={markdown} tldr={tldr} loading={loading} ticket={ticket} />
+        <KBPreview
+          markdown={markdown}
+          tldr={tldr}
+          loading={loading}
+          ticket={ticket}
+          onMarkdownChange={setMarkdown}
+        />
       </div>
     </main>
   );
