@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { KBFormFields } from "@/lib/types";
+import {
+  AUDIENCE_OPTIONS,
+  AUDIENCE_TONE_MAP,
+  type Audience,
+  type KBFormFields,
+} from "@/lib/types";
 
 interface Props {
   fields: KBFormFields;
@@ -12,6 +17,18 @@ interface Props {
 }
 
 const STEPS = ["Basics", "Symptoms & Cause", "Resolution", "Review"] as const;
+
+const TONE_LABELS: Record<KBFormFields["tone"], string> = {
+  technical: "Technical (IT admins)",
+  plain: "Plain language (end users)",
+  engineering: "Technical, with detailed code explanations (Engineering)",
+};
+
+const AUDIENCE_HINTS: Record<Audience, string> = {
+  Internal: "IT / support staff — technical language",
+  Public: "End users — plain, jargon-free language",
+  Engineering: "Engineers — technical, with code walkthroughs",
+};
 
 function Field({
   label,
@@ -52,8 +69,13 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 export default function KBForm({ fields, onChange, onSubmit, loading, error }: Props) {
   const [step, setStep] = useState(0);
 
-  function set<K extends keyof KBFormFields>(key: K, value: string) {
+  function set<K extends keyof KBFormFields>(key: K, value: KBFormFields[K]) {
     onChange({ ...fields, [key]: value });
+  }
+
+  function selectAudience(audience: Audience) {
+    // Tone always follows audience — see AUDIENCE_TONE_MAP in lib/types.ts.
+    onChange({ ...fields, audience, tone: AUDIENCE_TONE_MAP[audience] });
   }
 
   const basicsValid = fields.title.trim().length > 0;
@@ -143,14 +165,34 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
                 />
               </Field>
             </div>
-            <Field label="Audience">
-              <input
-                className={inputClass}
-                value={fields.audience}
-                onChange={(e) => set("audience", e.target.value)}
-                placeholder="End Users / IT Admins"
-              />
-            </Field>
+
+            <div>
+              <span className="font-mono text-[11px] uppercase tracking-widest text-ink/60">
+                Audience
+              </span>
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
+                {AUDIENCE_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => selectAudience(option)}
+                    className={`rounded-sm border px-3 py-2 text-left text-sm transition ${
+                      fields.audience === option
+                        ? "border-forest bg-forest/10 text-forest-dark"
+                        : "border-line bg-white text-ink/70 hover:bg-ink/5"
+                    }`}
+                  >
+                    <span className="block font-semibold">{option}</span>
+                    <span className="block text-[11px] text-ink/45">
+                      {AUDIENCE_HINTS[option]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11px] text-ink/40">
+                The writing tone is set automatically based on this choice.
+              </p>
+            </div>
           </>
         )}
 
@@ -202,16 +244,27 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
         )}
 
         {step === 3 && (
-          <div className="rounded-sm border border-line bg-white p-4">
-            <ReviewRow label="Title" value={fields.title} />
-            <ReviewRow label="Category" value={fields.category} />
-            <ReviewRow label="Product / Version" value={fields.productVersion} />
-            <ReviewRow label="Audience" value={fields.audience} />
-            <ReviewRow label="Symptoms" value={fields.symptoms} />
-            <ReviewRow label="Cause" value={fields.cause} />
-            <ReviewRow label="Resolution Steps" value={fields.resolutionSteps} />
-            <ReviewRow label="Keywords" value={fields.keywords} />
-          </div>
+          <>
+            <div className="rounded-sm border border-line bg-white/70 px-3 py-2 text-xs text-ink/70">
+              Writing tone: <strong>{TONE_LABELS[fields.tone]}</strong>
+              <br />
+              <span className="text-ink/45">
+                Auto-selected because the audience is set to {fields.audience}. Change
+                the audience in Basics to change the tone.
+              </span>
+            </div>
+
+            <div className="rounded-sm border border-line bg-white p-4">
+              <ReviewRow label="Title" value={fields.title} />
+              <ReviewRow label="Category" value={fields.category} />
+              <ReviewRow label="Product / Version" value={fields.productVersion} />
+              <ReviewRow label="Audience" value={fields.audience} />
+              <ReviewRow label="Symptoms" value={fields.symptoms} />
+              <ReviewRow label="Cause" value={fields.cause} />
+              <ReviewRow label="Resolution Steps" value={fields.resolutionSteps} />
+              <ReviewRow label="Keywords" value={fields.keywords} />
+            </div>
+          </>
         )}
 
         {error && (

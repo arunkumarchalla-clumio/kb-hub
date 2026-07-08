@@ -9,11 +9,12 @@ const EMPTY_FIELDS: KBFormFields = {
   title: "",
   category: "",
   productVersion: "",
-  audience: "",
+  audience: "Internal",
   symptoms: "",
   cause: "",
   resolutionSteps: "",
   keywords: "",
+  tone: "technical",
 };
 
 function makeTicketNumber() {

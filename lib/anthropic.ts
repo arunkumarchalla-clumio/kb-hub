@@ -1,18 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { KBFormFields } from "./types";
+import type { ArticleTone, KBFormFields } from "./types";
 
 // Server-side only. Never import this file from a "use client" component.
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const SYSTEM_PROMPT = `You write internal Knowledge Base (KB) articles for an IT/support team from structured field input.
-
-Always output ONLY Markdown, in exactly this structure and order, with no preamble or closing remarks:
+const BASE_STRUCTURE = `Always output ONLY Markdown, in exactly this structure and order, with no preamble or closing remarks:
 
 # {Title}
 
-**Summary:** 1-3 sentence plain-language summary of the issue and the fix.
+**Summary:** 1-3 sentence summary of the issue and the fix.
 
 ## Symptoms
 - Bullet list of observable symptoms.
@@ -32,10 +30,25 @@ Comma-separated keywords.
 Rules:
 - Use only the information given in the fields. Do not invent details.
 - If a field is blank or vague, say so plainly in that section (e.g. "No symptoms provided") instead of fabricating content.
-- Resolution steps must be a numbered list, one action per step.
-- Keep language plain and instructional, not marketing copy.`;
+- Resolution steps must be a numbered list, one action per step.`;
+
+const TONE_INSTRUCTIONS: Record<ArticleTone, string> = {
+  technical: `Write for an IT admin / technical support audience. Use precise technical terminology (service names, exact menu paths, command syntax, error codes) without over-explaining basics. Assume the reader is comfortable with system administration. Keep language direct and instructional, not marketing copy.`,
+  plain: `Write for an end user with no technical background. Avoid jargon; when a technical term is unavoidable, briefly explain it in plain words the first time it's used. Prefer short sentences and concrete, everyday language over precise technical terminology. Resolution steps should read like patient, friendly instructions a non-technical person could follow without help.`,
+  engineering: `Write for a software engineering audience. Use precise technical terminology freely, and wherever the resolution involves code, configuration, commands, API calls, or scripts, include them as fenced code blocks and briefly explain what each non-obvious line or flag does and why it's needed. Assume strong technical background, but never leave a code snippet unexplained if its purpose isn't self-evident from context. Prefer being thorough over being brief when it comes to implementation detail.`,
+};
+
+function buildSystemPrompt(tone: ArticleTone): string {
+  return `You write internal Knowledge Base (KB) articles for a support team from structured field input.
+
+${TONE_INSTRUCTIONS[tone]}
+
+${BASE_STRUCTURE}`;
+}
 
 export async function generateKBArticle(fields: KBFormFields): Promise<string> {
+  const tone: ArticleTone = TONE_INSTRUCTIONS[fields.tone] ? fields.tone : "technical";
+
   const userPrompt = `Generate a KB article from these fields:
 
 Title: ${fields.title || "(not provided)"}
@@ -50,7 +63,7 @@ Keywords: ${fields.keywords || "(not provided)"}`;
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 1500,
-    system: SYSTEM_PROMPT,
+    system: buildSystemPrompt(tone),
     messages: [{ role: "user", content: userPrompt }],
   });
 
