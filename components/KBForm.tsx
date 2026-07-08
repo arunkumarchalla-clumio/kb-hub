@@ -106,7 +106,22 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
     onChange(merged);
   }
 
+  function hasContent(f: KBFormFields): boolean {
+    return Boolean(
+      f.title.trim() ||
+        f.category.trim() ||
+        f.productVersion.trim() ||
+        f.symptoms.trim() ||
+        f.cause.trim() ||
+        f.resolutionSteps.trim() ||
+        f.keywords.trim()
+    );
+  }
+
   function clearForm() {
+    if (hasContent(fields) && !window.confirm("Clear all fields? This can't be undone.")) {
+      return;
+    }
     onChange({
       title: "",
       category: "",
@@ -118,6 +133,7 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
       keywords: "",
       tone: "technical",
     });
+    setStep(0);
   }
 
   const keywordAnalysis = analyzeKeywords(fields);

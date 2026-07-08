@@ -20,6 +20,7 @@ export default function KBPreview({
 }: Props) {
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [exportingDocx, setExportingDocx] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Drop back to preview mode whenever a new generation starts, so editing
   // a previous draft doesn't linger once fresh content is on the way.
@@ -54,7 +55,15 @@ export default function KBPreview({
   }
 
   function copy() {
-    navigator.clipboard.writeText(exportableContent());
+    navigator.clipboard
+      .writeText(exportableContent())
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {
+        alert("Couldn't copy to clipboard. Please try selecting and copying manually.");
+      });
   }
 
   async function exportDocx() {
@@ -199,9 +208,13 @@ export default function KBPreview({
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             onClick={copy}
-            className="rounded-sm border border-line px-3 py-1.5 text-sm hover:bg-ink/5"
+            className={`rounded-sm border px-3 py-1.5 text-sm transition ${
+              copied
+                ? "border-forest bg-forest/10 text-forest-dark"
+                : "border-line hover:bg-ink/5"
+            }`}
           >
-            Copy Markdown
+            {copied ? "Copied!" : "Copy Markdown"}
           </button>
           <button
             onClick={download}
