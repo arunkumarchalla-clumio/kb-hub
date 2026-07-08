@@ -33,6 +33,7 @@ export interface GenerateKBRequest {
 
 export interface GenerateKBResponse {
   markdown: string;
+  tldr: string;
 }
 
 export interface GenerateKBError {

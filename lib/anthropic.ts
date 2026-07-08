@@ -6,11 +6,19 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const BASE_STRUCTURE = `Always output ONLY Markdown, in exactly this structure and order, with no preamble or closing remarks:
+const TLDR_DELIMITER = "===ARTICLE===";
+
+const BASE_STRUCTURE = `Output format (follow exactly, no other preamble or closing remarks):
+
+Line 1: a single line starting with "TLDR:" followed by one plain sentence, 15 words or fewer, stating the issue and the fix in the fewest words possible. This is a scanning aid shown separately from the article, not part of the article body.
+
+Line 2: exactly this delimiter on its own line: ${TLDR_DELIMITER}
+
+After the delimiter, the full Markdown article in exactly this structure and order:
 
 # {Title}
 
-**Summary:** 1-3 sentence summary of the issue and the fix.
+**Summary:** 1-3 sentence summary of the issue and the fix. (Write this normally — it's fuller than the TLDR line, not a duplicate of it.)
 
 ## Symptoms
 - Bullet list of observable symptoms.
@@ -50,7 +58,12 @@ ${TONE_INSTRUCTIONS[tone]}
 ${BASE_STRUCTURE}`;
 }
 
-export async function generateKBArticle(fields: KBFormFields): Promise<string> {
+export interface GeneratedArticle {
+  markdown: string;
+  tldr: string;
+}
+
+export async function generateKBArticle(fields: KBFormFields): Promise<GeneratedArticle> {
   const tone: ArticleTone = TONE_INSTRUCTIONS[fields.tone] ? fields.tone : "technical";
 
   const userPrompt = `Generate a KB article from these fields:
@@ -76,5 +89,18 @@ Keywords: ${fields.keywords || "(not provided)"}`;
     throw new Error("No text content returned from Claude");
   }
 
-  return textBlock.text;
+  return parseGeneratedArticle(textBlock.text);
+}
+
+// Exported for testing. Falls back gracefully to an empty TLDR if the model
+// didn't follow the delimiter format for any reason, rather than failing.
+export function parseGeneratedArticle(raw: string): GeneratedArticle {
+  const idx = raw.indexOf(TLDR_DELIMITER);
+  if (idx === -1) {
+    return { markdown: raw.trim(), tldr: "" };
+  }
+  const head = raw.slice(0, idx).trim();
+  const markdown = raw.slice(idx + TLDR_DELIMITER.length).trim();
+  const tldr = head.replace(/^TLDR:\s*/i, "").trim();
+  return { markdown, tldr };
 }

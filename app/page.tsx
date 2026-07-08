@@ -27,6 +27,7 @@ export default function Home() {
   const [ticket, setTicket] = useState("KB-----");
   const [fields, setFields] = useState<KBFormFields>(EMPTY_FIELDS);
   const [markdown, setMarkdown] = useState("");
+  const [tldr, setTldr] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,6 +49,7 @@ export default function Home() {
         throw new Error(data.error || "Something went wrong.");
       }
       setMarkdown(data.markdown);
+      setTldr(data.tldr || "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -76,7 +78,7 @@ export default function Home() {
           loading={loading}
           error={error}
         />
-        <KBPreview markdown={markdown} loading={loading} ticket={ticket} />
+        <KBPreview markdown={markdown} tldr={tldr} loading={loading} ticket={ticket} />
       </div>
     </main>
   );
