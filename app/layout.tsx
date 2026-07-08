@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Source_Serif_4, Inter, JetBrains_Mono } from "next/font/google";
+import { Poppins, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const sourceSerif = Source_Serif_4({
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-source-serif",
-  weight: ["600", "700"],
+  variable: "--font-poppins",
+  weight: ["600", "700", "800"],
 });
 
 const inter = Inter({
@@ -31,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable} font-body bg-paper text-ink`}
+        className={`${poppins.variable} ${inter.variable} ${jetbrainsMono.variable} font-body bg-paper text-ink`}
       >
         {children}
       </body>

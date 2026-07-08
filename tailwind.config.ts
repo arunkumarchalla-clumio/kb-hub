@@ -8,12 +8,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#EEF1F0",
-        ink: "#1B2430",
-        line: "#D8DDD9",
-        forest: {
-          DEFAULT: "#2F6F4E",
-          dark: "#1F4D36",
+        paper: "#F7F6FB",
+        ink: "#1E1A2E",
+        line: "#E3DFEE",
+        charcoal: "#100D18",
+        primary: {
+          DEFAULT: "#6C3FA6",
+          dark: "#4B2170",
         },
         amber: {
           DEFAULT: "#C98A3B",
@@ -21,7 +22,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["var(--font-source-serif)", "Georgia", "serif"],
+        display: ["var(--font-poppins)", "system-ui", "sans-serif"],
         body: ["var(--font-inter)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains)", "ui-monospace", "monospace"],
       },

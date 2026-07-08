@@ -57,8 +57,8 @@ const KEYWORD_STRENGTH_STYLES: Record<
 > = {
   empty: { label: "Empty", barClass: "bg-ink/15", barWidth: "0%", textClass: "text-ink/40" },
   weak: { label: "Weak", barClass: "bg-amber", barWidth: "35%", textClass: "text-amber-900" },
-  good: { label: "Good", barClass: "bg-forest/70", barWidth: "70%", textClass: "text-forest-dark" },
-  strong: { label: "Strong", barClass: "bg-forest", barWidth: "100%", textClass: "text-forest-dark" },
+  good: { label: "Good", barClass: "bg-primary/70", barWidth: "70%", textClass: "text-primary-dark" },
+  strong: { label: "Strong", barClass: "bg-primary", barWidth: "100%", textClass: "text-primary-dark" },
 };
 
 function Field({
@@ -82,7 +82,7 @@ function Field({
 }
 
 const inputClass =
-  "w-full rounded-sm border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink/30 focus:border-forest";
+  "w-full rounded-sm border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink/30 focus:border-primary";
 
 // A dropdown of preset options with a fallback free-text entry for anything
 // not on the list — used for Issue Type and Primary Entity Type, which have
@@ -222,7 +222,7 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
   return (
     <section className="rounded-sm border border-line bg-white/60 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-700">Intake</h2>
+        <h2 className="font-display text-lg font-bold">Intake</h2>
         <button
           type="button"
           onClick={clearForm}
@@ -246,9 +246,9 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
               }
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] transition ${
                 i < step
-                  ? "bg-forest text-paper"
+                  ? "bg-primary text-paper"
                   : i === step
-                  ? "border-2 border-forest text-forest-dark"
+                  ? "border-2 border-primary text-primary-dark"
                   : "border border-line text-ink/30"
               }`}
               aria-current={i === step ? "step" : undefined}
@@ -256,7 +256,7 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
               {i < step ? "✓" : i + 1}
             </button>
             {i < STEPS.length - 1 && (
-              <div className={`h-px flex-1 ${i < step ? "bg-forest" : "bg-line"}`} />
+              <div className={`h-px flex-1 ${i < step ? "bg-primary" : "bg-line"}`} />
             )}
           </li>
         ))}
@@ -336,7 +336,7 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
                     onClick={() => selectAudience(option)}
                     className={`rounded-sm border px-3 py-2 text-left text-sm transition ${
                       fields.audience === option
-                        ? "border-forest bg-forest/10 text-forest-dark"
+                        ? "border-primary bg-primary/10 text-primary-dark"
                         : "border-line bg-white text-ink/70 hover:bg-ink/5"
                     }`}
                   >
@@ -422,7 +422,7 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
                       key={word}
                       type="button"
                       onClick={() => addKeyword(word)}
-                      className="rounded-full border border-line bg-white px-2 py-0.5 text-[11px] text-ink/60 transition hover:border-forest hover:text-forest-dark"
+                      className="rounded-full border border-line bg-white px-2 py-0.5 text-[11px] text-ink/60 transition hover:border-primary hover:text-primary-dark"
                     >
                       + {word}
                     </button>
@@ -487,9 +487,9 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
             <button
               type="submit"
               disabled={loading || !basicsValid}
-              className="flex-1 rounded-sm bg-forest px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-forest-dark disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex-1 rounded-sm bg-primary px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {loading ? "Generating…" : "Generate KB Article"}
+              {loading ? "Generating (checking AWS docs)…" : "Generate KB Article"}
             </button>
           )}
         </div>

@@ -30,7 +30,7 @@ export default function KBPreview({
   const statusClass = loading
     ? "bg-amber-light text-amber-900 border-amber/50"
     : markdown
-    ? "bg-forest/10 text-forest-dark border-forest/40"
+    ? "bg-primary/10 text-primary-dark border-primary/40"
     : "bg-ink/5 text-ink/50 border-line";
 
   function download() {
@@ -96,9 +96,9 @@ export default function KBPreview({
         <head>
           <title>${ticket}</title>
           <style>
-            body { font-family: Georgia, 'Times New Roman', serif; color: #1B2430; max-width: 720px; margin: 48px auto; line-height: 1.6; padding: 0 24px; }
+            body { font-family: Georgia, 'Times New Roman', serif; color: #1E1A2E; max-width: 720px; margin: 48px auto; line-height: 1.6; padding: 0 24px; }
             h1 { font-size: 26px; margin-bottom: 4px; }
-            h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #2F6F4E; margin-top: 28px; border-bottom: 1px solid #D8DDD9; padding-bottom: 4px; }
+            h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #4B2170; margin-top: 28px; border-bottom: 1px solid #E3DFEE; padding-bottom: 4px; }
             code { font-family: 'SFMono-Regular', Consolas, monospace; background: #f2f2f0; padding: 1px 4px; border-radius: 2px; font-size: 13px; }
             pre code { display: block; padding: 10px; overflow-x: auto; }
             ol, ul { padding-left: 22px; }
@@ -120,7 +120,7 @@ export default function KBPreview({
   return (
     <section className="rounded-sm border border-line bg-white/60 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-700">Article Preview</h2>
+        <h2 className="font-display text-lg font-bold">Article Preview</h2>
         <span
           className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-widest ${statusClass}`}
         >
@@ -163,7 +163,7 @@ export default function KBPreview({
         {markdown && mode === "preview" && (
           <article
             id="kb-article-content"
-            className="prose prose-sm max-w-none prose-headings:font-display prose-headings:font-700 prose-h1:text-xl prose-h2:mt-5 prose-h2:text-sm prose-h2:uppercase prose-h2:tracking-widest prose-h2:text-forest-dark prose-ol:pl-4"
+            className="prose prose-sm max-w-none prose-headings:font-display prose-headings:font-bold prose-h1:text-xl prose-h2:mt-5 prose-h2:text-sm prose-h2:uppercase prose-h2:tracking-widest prose-h2:text-primary-dark prose-ol:pl-4"
           >
             <ReactMarkdown>{markdown}</ReactMarkdown>
           </article>
@@ -185,7 +185,7 @@ export default function KBPreview({
             onClick={copy}
             className={`rounded-sm border px-3 py-1.5 text-sm transition ${
               copied
-                ? "border-forest bg-forest/10 text-forest-dark"
+                ? "border-primary bg-primary/10 text-primary-dark"
                 : "border-line hover:bg-ink/5"
             }`}
           >
