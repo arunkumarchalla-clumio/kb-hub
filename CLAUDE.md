@@ -14,7 +14,7 @@ This file is the first thing Claude Code reads when it opens this project. Keep 
 ## Folder map
 
 - `app/` — pages and the API route. `app/page.tsx` is the single-page UI (form + live preview). `app/api/generate-kb/route.ts` is the only place that talks to the Anthropic API.
-- `components/` — `KBForm.tsx` (the intake form) and `KBPreview.tsx` (renders the generated article as Markdown).
+- `components/` — `KBForm.tsx` (a 4-step wizard: Basics → Symptoms & Cause → Resolution → Review) and `KBPreview.tsx` (renders the generated article as Markdown).
 - `lib/` — `anthropic.ts` (thin client wrapper + the system prompt that defines KB article structure), `types.ts` (shared TypeScript types for form fields and API payloads).
 - `.claude/agents/` — subagents Claude Code can delegate to (see below).
 - `.claude/skills/` — reusable instructions Claude Code loads automatically when relevant (see below).
