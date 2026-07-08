@@ -25,6 +25,10 @@ Short paragraph explaining the root cause, from the Cause field.
 ## Applies To
 - Product/Version, and Audience (e.g. "End Users", "IT Admins"), as a short bullet list.
 
+## FAQ
+**Q: ...**
+Concise answer, grounded only in the given fields. 2-3 questions, or "No frequently asked questions identified." if there isn't enough to work with.
+
 ## Keywords
 Comma-separated keywords for searchability.
 ```
@@ -33,6 +37,7 @@ Rules:
 
 - Headings are always `##` (H2) for sections, `#` (H1) only for the article title.
 - Resolution steps are always a numbered list, never bullets — order matters for troubleshooting.
-- Don't add sections beyond the six above unless the user explicitly asks for a new one — and if they do, add it consistently in both the system prompt (`lib/anthropic.ts`) and the preview renderer (`components/KBPreview.tsx`).
+- FAQ questions must be answerable from the given fields — don't invent a question whose honest answer would require information the form didn't collect.
+- Don't add sections beyond the seven above unless the user explicitly asks for a new one — and if they do, add it consistently in both the system prompt (`lib/anthropic.ts`) and the preview renderer (`components/KBPreview.tsx`).
 - Keep the tone plain and instructional, not marketing or conversational.
 - If an input field was left blank, the corresponding section should say so plainly (e.g. "No symptoms provided") rather than being omitted or fabricated.

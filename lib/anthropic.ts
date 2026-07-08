@@ -24,13 +24,17 @@ Short paragraph explaining the root cause.
 ## Applies To
 - Product/Version and Audience as bullet points.
 
+## FAQ
+2-3 likely follow-up questions a reader would have after reading this article, each as "**Q: ...**" followed by a concise answer on the next line. Only ask questions you can actually answer from the given fields (e.g. "What if the steps don't fix it?", "Does this affect other versions?", "Is a restart required?") — do not invent questions whose answers would require information not provided.
+
 ## Keywords
 Comma-separated keywords.
 
 Rules:
 - Use only the information given in the fields. Do not invent details.
 - If a field is blank or vague, say so plainly in that section (e.g. "No symptoms provided") instead of fabricating content.
-- Resolution steps must be a numbered list, one action per step.`;
+- Resolution steps must be a numbered list, one action per step.
+- If there isn't enough information to write any genuine, well-grounded FAQ question, write "No frequently asked questions identified." under FAQ instead of forcing one.`;
 
 const TONE_INSTRUCTIONS: Record<ArticleTone, string> = {
   technical: `Write for an IT admin / technical support audience. Use precise technical terminology (service names, exact menu paths, command syntax, error codes) without over-explaining basics. Assume the reader is comfortable with system administration. Keep language direct and instructional, not marketing copy.`,
