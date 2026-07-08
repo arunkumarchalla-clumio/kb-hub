@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { analyzeKeywords, parseKeywordList, type KeywordStrength } from "@/lib/keywordCheck";
 import {
   AUDIENCE_OPTIONS,
   AUDIENCE_TONE_MAP,
@@ -28,6 +29,16 @@ const AUDIENCE_HINTS: Record<Audience, string> = {
   Internal: "IT / support staff — technical language",
   Public: "End users — plain, jargon-free language",
   Engineering: "Engineers — technical, with code walkthroughs",
+};
+
+const KEYWORD_STRENGTH_STYLES: Record<
+  KeywordStrength,
+  { label: string; barClass: string; barWidth: string; textClass: string }
+> = {
+  empty: { label: "Empty", barClass: "bg-ink/15", barWidth: "0%", textClass: "text-ink/40" },
+  weak: { label: "Weak", barClass: "bg-amber", barWidth: "35%", textClass: "text-amber-900" },
+  good: { label: "Good", barClass: "bg-forest/70", barWidth: "70%", textClass: "text-forest-dark" },
+  strong: { label: "Strong", barClass: "bg-forest", barWidth: "100%", textClass: "text-forest-dark" },
 };
 
 function Field({
@@ -77,6 +88,15 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
     // Tone always follows audience — see AUDIENCE_TONE_MAP in lib/types.ts.
     onChange({ ...fields, audience, tone: AUDIENCE_TONE_MAP[audience] });
   }
+
+  function addKeyword(word: string) {
+    const current = parseKeywordList(fields.keywords);
+    if (current.some((k) => k.toLowerCase() === word.toLowerCase())) return;
+    set("keywords", [...current, word].join(", "));
+  }
+
+  const keywordAnalysis = analyzeKeywords(fields);
+  const keywordStyle = KEYWORD_STRENGTH_STYLES[keywordAnalysis.strength];
 
   const basicsValid = fields.title.trim().length > 0;
   const canGoNext = step !== 0 || basicsValid;
@@ -240,6 +260,38 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
                 placeholder="vpn, connection, windows 11"
               />
             </Field>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+                  <div
+                    className={`h-full rounded-full transition-all ${keywordStyle.barClass}`}
+                    style={{ width: keywordStyle.barWidth }}
+                  />
+                </div>
+                <span
+                  className={`font-mono text-[10px] uppercase tracking-widest ${keywordStyle.textClass}`}
+                >
+                  {keywordStyle.label}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-ink/50">{keywordAnalysis.message}</p>
+
+              {keywordAnalysis.suggestions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {keywordAnalysis.suggestions.map((word) => (
+                    <button
+                      key={word}
+                      type="button"
+                      onClick={() => addKeyword(word)}
+                      className="rounded-full border border-line bg-white px-2 py-0.5 text-[11px] text-ink/60 transition hover:border-forest hover:text-forest-dark"
+                    >
+                      + {word}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         )}
 
