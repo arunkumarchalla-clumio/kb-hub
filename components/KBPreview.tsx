@@ -170,16 +170,6 @@ export default function KBPreview({
   const internalRefs = refs.filter((r) => r.isInternal);
   const canSeeInternal = audience === "Internal" || audience === "Engineering";
 
-  function download() {
-    const blob = new Blob([expanded], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${ticket}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   function copy() {
     navigator.clipboard
       .writeText(expanded)
@@ -659,13 +649,7 @@ export default function KBPreview({
                   : "border-line hover:bg-ink/5"
               }`}
             >
-              {copied ? "Copied!" : "Copy Markdown"}
-            </button>
-            <button
-              onClick={download}
-              className="rounded-sm border border-line px-3 py-1.5 text-sm hover:bg-ink/5"
-            >
-              Download .md
+              {copied ? "Copied!" : "Copy MD"}
             </button>
             <button
               onClick={exportDocx}
