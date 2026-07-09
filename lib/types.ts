@@ -4,11 +4,6 @@ export type Audience = "Internal" | "Public" | "Engineering";
 
 export const AUDIENCE_OPTIONS: Audience[] = ["Internal", "Public", "Engineering"];
 
-// Tone is derived from audience, not chosen independently:
-// - Internal readers (IT/support staff) get technical language.
-// - Public readers (end users) get plain, jargon-free language.
-// - Engineering readers get technical language plus detailed explanations
-//   of any coding/config instructions.
 export const AUDIENCE_TONE_MAP: Record<Audience, ArticleTone> = {
   Internal: "technical",
   Public: "plain",
@@ -17,16 +12,23 @@ export const AUDIENCE_TONE_MAP: Record<Audience, ArticleTone> = {
 
 export type ImageSection = "symptoms" | "resolution";
 
-// An attached screenshot. `token` is the placeholder ([[img:sy1]]) that can
-// appear in the article Markdown; it's expanded to the real image at
-// render/export time. `dataUri` is a full data:image/...;base64,... string.
 export interface KBImage {
-  id: string; // e.g. "sy1", "re1"
-  token: string; // e.g. "[[img:sy1]]"
+  id: string;
+  token: string;
   section: ImageSection;
   caption: string;
   dataUri: string;
-  mediaType: string; // e.g. "image/png"
+  mediaType: string;
+}
+
+// A manually-supplied reference link.
+// isInternal=true  → shown to Internal & Engineering audiences only.
+// isInternal=false → shown to all audiences including Public.
+export interface ReferenceLink {
+  id: string;        // stable key for React, e.g. "ref-1"
+  url: string;
+  label: string;     // display text; falls back to url if blank
+  isInternal: boolean;
 }
 
 export interface KBFormFields {
@@ -42,6 +44,7 @@ export interface KBFormFields {
   resolutionSteps: string;
   keywords: string;
   tone: ArticleTone;
+  referenceLinks: ReferenceLink[];
 }
 
 export interface GenerateKBRequest {

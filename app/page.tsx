@@ -27,6 +27,7 @@ const EMPTY_FIELDS: KBFormFields = {
   resolutionSteps: "",
   keywords: "",
   tone: "technical",
+  referenceLinks: [],
 };
 
 const DRAFT_STORAGE_KEY = "kb-creator-draft-v1";
@@ -259,6 +260,7 @@ export default function Home() {
           images={images}
           loading={loading}
           ticket={ticket}
+          audience={fields.audience}
           onMarkdownChange={setMarkdown}
           onRegenerate={handleRefreshRegenerate}
           onNewArticle={newArticle}

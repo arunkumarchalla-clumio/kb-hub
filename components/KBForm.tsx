@@ -10,6 +10,7 @@ import {
   type ImageSection,
   type KBFormFields,
   type KBImage,
+  type ReferenceLink,
 } from "@/lib/types";
 
 interface Props {
@@ -293,6 +294,118 @@ function ScreenshotAttacher({
                   </button>
                 </div>
               </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── Reference links editor ────────────────────────────────────────────────────
+// Used in Step 2. Each row has a URL, an optional display label, and an
+// internal/external checkbox. Rows can be added or removed freely.
+
+let refCounter = 0;
+function newRefId() {
+  return `ref-${++refCounter}`;
+}
+
+function ReferenceLinksEditor({
+  links,
+  onChange,
+}: {
+  links: ReferenceLink[];
+  onChange: (links: ReferenceLink[]) => void;
+}) {
+  function addRow() {
+    onChange([...links, { id: newRefId(), url: "", label: "", isInternal: false }]);
+  }
+
+  function updateRow(id: string, patch: Partial<ReferenceLink>) {
+    onChange(links.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  }
+
+  function removeRow(id: string) {
+    onChange(links.filter((l) => l.id !== id));
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[11px] uppercase tracking-widest text-ink/60">
+          Reference Links
+        </span>
+        <button
+          type="button"
+          onClick={addRow}
+          className="rounded-sm border border-line px-2.5 py-1 text-[11px] text-ink/70 hover:border-primary hover:text-primary-dark"
+        >
+          + Add link
+        </button>
+      </div>
+
+      {links.length === 0 ? (
+        <p className="mt-2 text-[11px] text-ink/40">
+          Paste URLs here to include as references in the article. Mark each as
+          internal (visible only to Internal &amp; Engineering audiences) or external
+          (visible to all, including Public).
+        </p>
+      ) : (
+        <ul className="mt-2 space-y-2">
+          {links.map((link, i) => (
+            <li
+              key={link.id}
+              className="rounded-sm border border-line bg-white p-2.5"
+            >
+              {/* Row header: number + internal toggle + remove */}
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] text-ink/35">#{i + 1}</span>
+
+                <label className="flex cursor-pointer items-center gap-1.5 select-none">
+                  <input
+                    type="checkbox"
+                    checked={link.isInternal}
+                    onChange={(e) => updateRow(link.id, { isInternal: e.target.checked })}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest ${
+                      link.isInternal
+                        ? "bg-amber-light text-amber-900"
+                        : "bg-primary/10 text-primary-dark"
+                    }`}
+                  >
+                    {link.isInternal ? "Internal" : "External"}
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => removeRow(link.id)}
+                  className="ml-auto text-[11px] text-ink/35 hover:text-amber-900"
+                  aria-label="Remove link"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* URL */}
+              <input
+                className={`${inputClass} text-xs`}
+                value={link.url}
+                onChange={(e) => updateRow(link.id, { url: e.target.value })}
+                placeholder="https://…"
+                type="url"
+              />
+
+              {/* Label */}
+              <input
+                className={`${inputClass} mt-1.5 text-xs`}
+                value={link.label}
+                onChange={(e) => updateRow(link.id, { label: e.target.value })}
+                placeholder="Display label (optional — URL used if blank)"
+              />
             </li>
           ))}
         </ul>
@@ -600,6 +713,10 @@ export default function KBForm({
               images={images}
               onImagesChange={onImagesChange}
             />
+            <ReferenceLinksEditor
+              links={fields.referenceLinks}
+              onChange={(refs) => set("referenceLinks", refs)}
+            />
           </>
         )}
 
@@ -632,6 +749,17 @@ export default function KBForm({
               <ReviewRow
                 label="Screenshots attached"
                 value={images.length ? `${images.length}` : ""}
+              />
+              <ReviewRow
+                label="Reference links"
+                value={
+                  fields.referenceLinks.filter((l) => l.url.trim()).length
+                    ? fields.referenceLinks
+                        .filter((l) => l.url.trim())
+                        .map((l) => `[${l.isInternal ? "Internal" : "External"}] ${l.label || l.url}`)
+                        .join("\n")
+                    : ""
+                }
               />
             </div>
           </>

@@ -12,13 +12,14 @@ import {
   SOCIAL_LINKS,
 } from "@/lib/brand";
 import { expandImageTokens, referencedImageIds } from "@/lib/imageTokens";
-import type { KBImage } from "@/lib/types";
+import type { Audience, KBImage } from "@/lib/types";
 
 interface Props {
   markdown: string;
   images: KBImage[];
   loading: boolean;
   ticket: string;
+  audience: Audience;
   onMarkdownChange: (markdown: string) => void;
   onRegenerate: () => void;
   onNewArticle: () => void;
@@ -29,6 +30,7 @@ export default function KBPreview({
   images,
   loading,
   ticket,
+  audience,
   onMarkdownChange,
   onRegenerate,
   onNewArticle,
@@ -97,6 +99,75 @@ export default function KBPreview({
   // Screenshots attached but not yet placed anywhere in the article.
   const placed = referencedImageIds(markdown);
   const unplaced = images.filter((img) => !placed.has(img.id));
+
+  // ── References section parsing ──────────────────────────────────────────
+  // Claude marks internal links with a "[INTERNAL]" prefix. We strip that
+  // section out of the rendered markdown and replace it with a custom block
+  // so we can apply audience-visibility rules:
+  //   Public  → external links only
+  //   Internal / Engineering → both, with internal links visually separated
+  interface ParsedRef {
+    label: string;
+    url: string;
+    isInternal: boolean;
+    raw: string; // original markdown line, for fallback
+  }
+
+  function parseReferencesFromMarkdown(md: string): {
+    bodyWithoutRefs: string;
+    refs: ParsedRef[];
+    hasRefsSection: boolean;
+  } {
+    // Split on the ## References heading (case-insensitive, optional trailing space)
+    const refHeadingRx = /^##\s+References\s*$/im;
+    const match = md.match(refHeadingRx);
+    if (!match || match.index === undefined) {
+      return { bodyWithoutRefs: md, refs: [], hasRefsSection: false };
+    }
+
+    const beforeRefs = md.slice(0, match.index).trimEnd();
+    const afterHeading = md.slice(match.index + match[0].length);
+
+    // The refs section ends at the next ## heading or end-of-string.
+    const nextHeadingRx = /^##\s+/m;
+    const nextMatch = afterHeading.match(nextHeadingRx);
+    const refBlock = nextMatch?.index !== undefined
+      ? afterHeading.slice(0, nextMatch.index)
+      : afterHeading;
+    const rest = nextMatch?.index !== undefined
+      ? afterHeading.slice(nextMatch.index)
+      : "";
+
+    const bodyWithoutRefs = (beforeRefs + "\n\n" + rest).trim();
+
+    const refs: ParsedRef[] = [];
+    for (const line of refBlock.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === "-" || /^no references/i.test(trimmed) || /^no external/i.test(trimmed)) continue;
+
+      const isInternal = /^\[INTERNAL\]/i.test(trimmed) || /^-\s+\[INTERNAL\]/i.test(trimmed);
+      // Strip leading "- " and "[INTERNAL]" / "[EXTERNAL]" tag
+      const stripped = trimmed.replace(/^-\s*/, "").replace(/^\[(INTERNAL|EXTERNAL)\]\s*/i, "").trim();
+
+      // Parse Markdown link: [label](url)
+      const mdLink = stripped.match(/^\[([^\]]+)\]\(([^)]+)\)/);
+      if (mdLink) {
+        refs.push({ label: mdLink[1], url: mdLink[2], isInternal, raw: line });
+      } else if (stripped.startsWith("http")) {
+        refs.push({ label: stripped, url: stripped, isInternal, raw: line });
+      }
+      // Lines that don't look like links are quietly skipped
+    }
+
+    return { bodyWithoutRefs, refs, hasRefsSection: true };
+  }
+
+  const { bodyWithoutRefs, refs, hasRefsSection } = parseReferencesFromMarkdown(expanded);
+
+  // What the current audience can see:
+  const externalRefs = refs.filter((r) => !r.isInternal);
+  const internalRefs = refs.filter((r) => r.isInternal);
+  const canSeeInternal = audience === "Internal" || audience === "Engineering";
 
   function download() {
     const blob = new Blob([expanded], { type: "text/markdown" });
@@ -385,8 +456,61 @@ export default function KBPreview({
               urlTransform={allowDataUris}
               components={{ img: ZoomableImage }}
             >
-              {expanded}
+              {bodyWithoutRefs}
             </ReactMarkdown>
+
+            {/* ── Custom References block ──────────────────────────────── */}
+            {hasRefsSection && (externalRefs.length > 0 || (canSeeInternal && internalRefs.length > 0)) && (
+              <div className="not-prose mt-6 border-t border-line pt-4">
+                <h2 className="font-mono text-[11px] uppercase tracking-widest text-primary-dark">
+                  References
+                </h2>
+
+                {/* External links — visible to all audiences */}
+                {externalRefs.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {externalRefs.map((ref, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-sm">
+                        <span className="mt-0.5 text-ink/30">↗</span>
+                        <a
+                          href={ref.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary-dark underline underline-offset-2 hover:text-primary"
+                        >
+                          {ref.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* Internal links — only for Internal & Engineering */}
+                {canSeeInternal && internalRefs.length > 0 && (
+                  <div className="mt-3">
+                    <p className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-amber-900">
+                      <span className="rounded bg-amber-light px-1.5 py-0.5">Internal only</span>
+                      <span className="text-ink/35">· not visible to Public audience</span>
+                    </p>
+                    <ul className="mt-1.5 space-y-1">
+                      {internalRefs.map((ref, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-sm">
+                          <span className="mt-0.5 text-amber-900/50">🔒</span>
+                          <a
+                            href={ref.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-amber-900 underline underline-offset-2 hover:text-amber-800"
+                          >
+                            {ref.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </article>
         )}
 
