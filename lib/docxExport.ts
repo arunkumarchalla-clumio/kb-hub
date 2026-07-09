@@ -12,7 +12,7 @@ import {
   TextRun,
 } from "docx";
 import { imageSize } from "image-size";
-import { COMPANY, COPYRIGHT, FOOTER_LINKS, PRODUCT, PROJECT_TITLE, SOCIAL_LINKS } from "./brand";
+import { COMPANY, COPYRIGHT, FOOTER_LINKS, LOGO_PNG_DATA_URI, PRODUCT, PROJECT_TITLE, SOCIAL_LINKS } from "./brand";
 import { IMAGE_TOKEN_REGEX } from "./imageTokens";
 import type { KBImage } from "./types";
 
@@ -163,14 +163,23 @@ export function markdownToDocxParagraphs(
   return paragraphs;
 }
 
-// Branded Word header: "Commvault | Clumio" on the left, project title + a
-// bottom rule, mirroring the on-screen and PDF banners.
+// Branded Word header: Commvault logo + "Commvault | Clumio" + project title.
 function buildDocxHeader(): Header {
+  // Decode the logo PNG from the base64 data URI
+  const logoBase64 = LOGO_PNG_DATA_URI.replace(/^data:image\/png;base64,/, "");
+  const logoBuffer = Buffer.from(logoBase64, "base64");
+
   return new Header({
     children: [
       new Paragraph({
         border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC", space: 6 } },
         children: [
+          new ImageRun({
+            data: logoBuffer,
+            transformation: { width: 18, height: 18 },
+            type: "png",
+          }),
+          new TextRun({ text: "  ", size: 22 }),
           new TextRun({ text: COMPANY, bold: true, size: 22 }),
           new TextRun({ text: "  |  ", size: 22, color: "999999" }),
           new TextRun({ text: PRODUCT, bold: true, size: 22, color: "6C3FA6" }),

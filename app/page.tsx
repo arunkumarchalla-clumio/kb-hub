@@ -8,6 +8,7 @@ import {
   COPYRIGHT,
   FOOTER_LINKS,
   LOGO_SVG_INNER,
+  LOGO_SVG_INNER_WHITE,
   PRODUCT,
   PROJECT_TITLE,
   SOCIAL_LINKS,
@@ -170,7 +171,7 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <header className="bg-black px-6 py-4 text-white md:px-10">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <button
             type="button"
             onClick={newArticle}
@@ -180,9 +181,9 @@ export default function Home() {
             <svg
               width="26"
               height="26"
-              viewBox="0 0 24 24"
+              viewBox="0 0 100 100"
               aria-hidden="true"
-              dangerouslySetInnerHTML={{ __html: LOGO_SVG_INNER }}
+              dangerouslySetInnerHTML={{ __html: LOGO_SVG_INNER_WHITE }}
             />
             <span className="flex items-baseline gap-2">
               <span className="font-display text-lg font-bold tracking-tight">{COMPANY}</span>
@@ -217,7 +218,7 @@ export default function Home() {
           className="pointer-events-none absolute -right-10 bottom-0 h-40 w-96 rounded-full bg-white/40 blur-2xl"
           aria-hidden="true"
         />
-        <div className="relative mx-auto max-w-6xl">
+        <div className="relative mx-auto max-w-7xl">
           <h1 className="font-display text-4xl font-extrabold uppercase leading-[1.1] tracking-tight text-[#2D1B4E] md:text-6xl">
             The fastest way to write
             <br />
@@ -231,7 +232,7 @@ export default function Home() {
       </section>
 
       {restoredDraft && (
-        <div className="mx-auto mt-6 flex max-w-6xl items-center justify-between rounded-sm border border-primary/30 bg-primary/5 px-6 py-2 text-sm text-primary-dark md:px-10">
+        <div className="mx-auto mt-6 flex max-w-7xl items-center justify-between rounded-sm border border-primary/30 bg-primary/5 px-6 py-2 text-sm text-primary-dark md:px-10">
           <span>Restored your unsaved draft from last time.</span>
           <button
             onClick={() => setRestoredDraft(false)}
@@ -242,7 +243,7 @@ export default function Home() {
         </div>
       )}
 
-      <div ref={formRef} className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-2 md:px-10">
+      <div ref={formRef} className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-10 md:grid-cols-[2fr_3fr] md:px-8">
         <KBForm
           fields={fields}
           onChange={setFields}
@@ -268,14 +269,14 @@ export default function Home() {
       </div>
 
       <footer className="mt-16 bg-black px-6 py-10 text-white/60 md:px-10">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-7xl">
           <div className="flex items-center gap-3">
             <svg
               width="26"
               height="26"
-              viewBox="0 0 24 24"
+              viewBox="0 0 100 100"
               aria-hidden="true"
-              dangerouslySetInnerHTML={{ __html: LOGO_SVG_INNER }}
+              dangerouslySetInnerHTML={{ __html: LOGO_SVG_INNER_WHITE }}
             />
             <span className="font-display text-lg font-bold tracking-tight text-white">
               {COMPANY}

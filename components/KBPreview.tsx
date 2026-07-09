@@ -7,6 +7,7 @@ import {
   COPYRIGHT,
   FOOTER_LINKS,
   LOGO_SVG_INNER,
+  LOGO_SVG_INNER_WHITE,
   PRODUCT,
   PROJECT_TITLE,
   SOCIAL_LINKS,
@@ -217,80 +218,202 @@ export default function KBPreview({
   }
 
   function exportPdf() {
-    const printWindow = window.open("", "_blank", "width=850,height=1100");
+    const printWindow = window.open("", "_blank", "width=900,height=1200");
     if (!printWindow) {
       alert("Please allow pop-ups to export as PDF.");
       return;
     }
     const bodyHtml = document.getElementById("kb-article-content")?.innerHTML || "";
 
-    const logoSvg = `<svg width="24" height="24" viewBox="0 0 24 24">${LOGO_SVG_INNER}</svg>`;
+    // White-stroke logo SVG (for dark/black header/footer banners)
+    const logoWhiteSvg = `<svg width="28" height="28" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;">${LOGO_SVG_INNER_WHITE}</svg>`;
+
     const socialHtml = SOCIAL_LINKS.map(
       (s) =>
-        `<a href="${s.url}" target="_blank" rel="noopener noreferrer" aria-label="${s.name}" style="color:#cfcfcf;text-decoration:none;"><svg width="18" height="18" viewBox="0 0 24 24">${s.svg}</svg></a>`
-    ).join("");
-    const footerLinksHtml = FOOTER_LINKS.map(
-      (l) => `<span style="color:#b9b9b9;">${l}</span>`
-    ).join("");
+        `<a href="${s.url}" style="color:#aaa;text-decoration:none;font-size:11px;">${s.name}</a>`
+    ).join(" &nbsp;·&nbsp; ");
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>${ticket}</title>
-          <style>
-            * { box-sizing: border-box; }
-            body { font-family: Georgia, 'Times New Roman', serif; color: #1E1A2E; margin: 0; line-height: 1.6; }
-            .kb-banner { background: #000; color: #fff; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-            .kb-brand { display: flex; align-items: center; gap: 12px; }
-            .kb-brand .name { font-family: system-ui, sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
-            .kb-brand .sep { width: 1px; height: 16px; background: rgba(255,255,255,0.25); }
-            .kb-brand .product { font-family: system-ui, sans-serif; font-weight: 600; font-size: 17px; color: #B78BE0; }
-            .kb-banner .meta { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.55); }
-            .kb-content { max-width: 720px; margin: 32px auto; padding: 0 32px; }
-            h1 { font-size: 26px; margin-bottom: 4px; }
-            h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #4B2170; margin-top: 28px; border-bottom: 1px solid #E3DFEE; padding-bottom: 4px; }
-            code { font-family: ui-monospace, Consolas, monospace; background: #f2f2f0; padding: 1px 4px; border-radius: 2px; font-size: 13px; }
-            pre code { display: block; padding: 10px; overflow-x: auto; }
-            ol, ul { padding-left: 22px; }
-            img { max-width: 100%; height: auto; border: 1px solid #E3DFEE; border-radius: 3px; margin: 8px 0; }
-            .kb-footer { background: #000; color: #999; padding: 28px 32px; margin-top: 40px; font-family: system-ui, sans-serif; }
-            .kb-footer .top { display: flex; align-items: center; gap: 10px; }
-            .kb-footer .top .name { color: #fff; font-weight: 700; font-size: 16px; }
-            .kb-footer .divider { height: 1px; background: rgba(255,255,255,0.15); margin: 18px 0; }
-            .kb-footer .row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-            .kb-footer .links { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12px; }
-            .kb-footer .socials { display: flex; gap: 16px; }
-            @media print { .kb-banner, .kb-footer { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-          </style>
-        </head>
-        <body>
-          <div class="kb-banner">
-            <div class="kb-brand">
-              ${logoSvg}
-              <span class="name">${COMPANY}</span>
-              <span class="sep"></span>
-              <span class="product">${PRODUCT}</span>
-            </div>
-            <div class="meta">${PROJECT_TITLE} &nbsp;·&nbsp; ${ticket}</div>
-          </div>
+    const footerLinksHtml = [COPYRIGHT, ...FOOTER_LINKS]
+      .map((l) => `<span>${l}</span>`)
+      .join(" &nbsp;·&nbsp; ");
 
-          <div class="kb-content">${bodyHtml}</div>
+    // The header and footer are rendered using CSS fixed positioning so they
+    // appear on EVERY printed page. @page removes the browser's own header/footer
+    // (URL, timestamp, page number). The body has matching top/bottom margins so
+    // content never overlaps the fixed banners.
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>${ticket}</title>
+    <style>
+      /* ── Reset browser print chrome ── */
+      @page {
+        size: A4;
+        margin: 0;
+      }
 
-          <div class="kb-footer">
-            <div class="top">${logoSvg}<span class="name">${COMPANY}</span></div>
-            <div class="divider"></div>
-            <div class="row">
-              <div class="links"><span>${COPYRIGHT}</span>${footerLinksHtml}</div>
-              <div class="socials">${socialHtml}</div>
-            </div>
-          </div>
-        </body>
-      </html>
-    `);
+      /* ── Base ── */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 13px;
+        color: #1E1A2E;
+        line-height: 1.7;
+        background: #fff;
+        /* Leave room for fixed header (52px) and footer (52px) + gaps */
+        padding: 72px 0 72px 0;
+      }
+
+      /* ── Fixed header — prints on every page ── */
+      .kb-header {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 52px;
+        background: #000;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 36px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        z-index: 1000;
+      }
+      .kb-header-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .kb-header-company {
+        font-weight: 700;
+        font-size: 16px;
+        letter-spacing: -0.01em;
+      }
+      .kb-header-sep {
+        width: 1px;
+        height: 15px;
+        background: rgba(255,255,255,0.3);
+      }
+      .kb-header-product {
+        font-weight: 600;
+        font-size: 16px;
+        color: #B78BE0;
+      }
+      .kb-header-ticket {
+        font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.5);
+      }
+
+      /* ── Fixed footer — prints on every page ── */
+      .kb-footer {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        height: 52px;
+        background: #000;
+        color: #999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 36px;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 10px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        z-index: 1000;
+      }
+      .kb-footer-links { color: #888; }
+      .kb-footer-socials { color: #888; }
+      .kb-footer-socials a { color: #aaa; text-decoration: none; }
+
+      /* ── Article content ── */
+      .kb-content {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 20px 32px 40px;
+      }
+      h1 {
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 24px;
+        font-weight: 800;
+        line-height: 1.25;
+        margin-bottom: 16px;
+        color: #1E1A2E;
+      }
+      h2 {
+        font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #4B2170;
+        margin-top: 28px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #E3DFEE;
+        padding-bottom: 5px;
+      }
+      p { margin-bottom: 10px; }
+      ul, ol { padding-left: 22px; margin-bottom: 10px; }
+      li { margin-bottom: 4px; }
+      code {
+        font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+        background: #f4f2f9;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 12px;
+      }
+      pre {
+        background: #f4f2f9;
+        border-radius: 4px;
+        padding: 12px;
+        overflow-x: auto;
+        margin-bottom: 12px;
+      }
+      pre code { background: none; padding: 0; }
+      strong { font-weight: 700; }
+      a { color: #4B2170; }
+      img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #E3DFEE;
+        border-radius: 3px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Fixed header (on every page) -->
+    <div class="kb-header">
+      <div class="kb-header-brand">
+        ${logoWhiteSvg}
+        <span class="kb-header-company">${COMPANY}</span>
+        <span class="kb-header-sep"></span>
+        <span class="kb-header-product">${PRODUCT}</span>
+      </div>
+      <div class="kb-header-ticket">${ticket}</div>
+    </div>
+
+    <!-- Fixed footer (on every page) -->
+    <div class="kb-footer">
+      <div class="kb-footer-links">${footerLinksHtml}</div>
+      <div class="kb-footer-socials">${socialHtml}</div>
+    </div>
+
+    <!-- Article body -->
+    <div class="kb-content">${bodyHtml}</div>
+
+  </body>
+</html>`);
     printWindow.document.close();
     printWindow.onload = () => {
       printWindow.focus();
-      printWindow.print();
+      // Short delay so fixed elements settle before the print dialog opens
+      setTimeout(() => printWindow.print(), 300);
     };
   }
 
@@ -440,7 +563,8 @@ export default function KBPreview({
         </p>
       )}
 
-      <div className="mt-3 min-h-[280px] rounded-sm border border-dashed border-line bg-white p-5">
+      <div className="mt-3 min-h-[1000px] rounded-sm border border-dashed border-line bg-white p-8 shadow-sm"
+           style={{ minHeight: "calc(297mm * 0.85)" }}>
         {!markdown && (
           <p className="text-sm text-ink/35">
             Your generated article will appear here once you submit the form.
@@ -516,7 +640,7 @@ export default function KBPreview({
 
         {markdown && mode === "edit" && (
           <textarea
-            className="h-full min-h-[260px] w-full resize-y border-none bg-transparent font-mono text-xs text-ink/85 outline-none"
+            className="h-full min-h-[900px] w-full resize-y border-none bg-transparent font-mono text-xs text-ink/85 outline-none"
             value={markdown}
             onChange={(e) => onMarkdownChange(e.target.value)}
             spellCheck={false}

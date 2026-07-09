@@ -1,0 +1,20 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hex fill -->
+  <path d="M 89.837,73.000 L 50.000,96.000 L 10.163,73.000 L 10.163,27.000 L 50.000,4.000 L 89.837,27.000 Z" fill="#7B3F87"/>
+  <!-- Hex inner highlight ring -->
+  <path d="M 89.837,73.000 L 50.000,96.000 L 10.163,73.000 L 10.163,27.000 L 50.000,4.000 L 89.837,27.000 Z" fill="none" stroke="#A070B8" stroke-width="2.5"/>
+
+  <!-- 3D Box: wide top diamond, squarish faces, long stem -->
+  <!-- Top diamond -->
+  <polygon points="50,22  65,30  50,38  35,30"
+           fill="none" stroke="white" stroke-width="2.6" stroke-linejoin="round"/>
+  <!-- Left face -->
+  <polygon points="35,30  35,52  50,60  50,38"
+           fill="none" stroke="white" stroke-width="2.6" stroke-linejoin="round"/>
+  <!-- Right face -->
+  <polygon points="65,30  65,52  50,60  50,38"
+           fill="none" stroke="white" stroke-width="2.6" stroke-linejoin="round"/>
+  <!-- Stem -->
+  <line x1="50" y1="60" x2="50" y2="76"
+        stroke="white" stroke-width="2.6" stroke-linecap="round"/>
+</svg>
