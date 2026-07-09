@@ -1,20 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { analyzeKeywords, parseKeywordList, type KeywordStrength } from "@/lib/keywordCheck";
+import { makeImageId, makeImageToken } from "@/lib/imageTokens";
 import {
   AUDIENCE_OPTIONS,
   AUDIENCE_TONE_MAP,
   type Audience,
+  type ImageSection,
   type KBFormFields,
+  type KBImage,
 } from "@/lib/types";
 
 interface Props {
   fields: KBFormFields;
   onChange: (fields: KBFormFields) => void;
+  images: KBImage[];
+  onImagesChange: (images: KBImage[]) => void;
   onSubmit: () => void;
+  onClear: () => void;
   loading: boolean;
   error: string;
+  step: number;
+  onStepChange: (step: number) => void;
 }
 
 const STEPS = ["Basics", "Symptoms & Cause", "Resolution", "Review"] as const;
@@ -38,6 +46,11 @@ const ENTITY_TYPE_OPTIONS = [
 ];
 
 const OTHER_VALUE = "__other__";
+
+// Guard against attaching enormous screenshots — big base64 images bloat the
+// request and slow generation. 4MB per image is a generous ceiling.
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
 const TONE_LABELS: Record<KBFormFields["tone"], string> = {
   technical: "Technical (IT admins)",
@@ -84,9 +97,6 @@ function Field({
 const inputClass =
   "w-full rounded-sm border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink/30 focus:border-primary";
 
-// A dropdown of preset options with a fallback free-text entry for anything
-// not on the list — used for Issue Type and Primary Entity Type, which have
-// common values but shouldn't block on an exhaustive list.
 function SelectOrCustom({
   label,
   options,
@@ -154,8 +164,158 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function KBForm({ fields, onChange, onSubmit, loading, error }: Props) {
-  const [step, setStep] = useState(0);
+// Screenshot attach + list UI, reused in Step 2 (symptoms) and Step 3 (resolution).
+function ScreenshotAttacher({
+  section,
+  images,
+  onImagesChange,
+}: {
+  section: ImageSection;
+  images: KBImage[];
+  onImagesChange: (images: KBImage[]) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState("");
+
+  const sectionImages = images.filter((img) => img.section === section);
+
+  function nextIdNumber(): number {
+    const existing = images
+      .filter((img) => img.section === section)
+      .map((img) => parseInt(img.id.replace(/^\D+/, ""), 10))
+      .filter((n) => !Number.isNaN(n));
+    return existing.length ? Math.max(...existing) + 1 : 1;
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files || !files.length) return;
+    setUploadError("");
+    const additions: KBImage[] = [];
+    let counter = nextIdNumber();
+
+    for (const file of Array.from(files)) {
+      if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+        setUploadError("Only PNG, JPEG, GIF, or WebP images are supported.");
+        continue;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        setUploadError("Each image must be under 4 MB.");
+        continue;
+      }
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("read failed"));
+        reader.readAsDataURL(file);
+      });
+      const id = makeImageId(section, counter++);
+      additions.push({
+        id,
+        token: makeImageToken(id),
+        section,
+        caption: file.name.replace(/\.[^.]+$/, ""),
+        dataUri,
+        mediaType: file.type,
+      });
+    }
+    if (additions.length) onImagesChange([...images, ...additions]);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function updateCaption(id: string, caption: string) {
+    onImagesChange(images.map((img) => (img.id === id ? { ...img, caption } : img)));
+  }
+
+  function removeImage(id: string) {
+    onImagesChange(images.filter((img) => img.id !== id));
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[11px] uppercase tracking-widest text-ink/60">
+          Screenshots
+        </span>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="rounded-sm border border-line px-2.5 py-1 text-[11px] text-ink/70 hover:border-primary hover:text-primary-dark"
+        >
+          + Attach image
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept={ACCEPTED_IMAGE_TYPES.join(",")}
+          multiple
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+      </div>
+
+      {uploadError && <p className="mt-1 text-[11px] text-amber-900">{uploadError}</p>}
+
+      {sectionImages.length === 0 ? (
+        <p className="mt-2 text-[11px] text-ink/40">
+          Attach screenshots here. Claude will see them and automatically place them in the
+          article where they fit. Each image gets a token like{" "}
+          <code className="rounded bg-ink/5 px-1">{makeImageToken(makeImageId(section, 1))}</code>{" "}
+          — you can also paste a token manually in the Edit view after generating if you want
+          to move it somewhere specific.
+        </p>
+      ) : (
+        <ul className="mt-2 space-y-2">
+          {sectionImages.map((img) => (
+            <li key={img.id} className="flex gap-3 rounded-sm border border-line bg-white p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.dataUri}
+                alt={img.caption}
+                className="h-14 w-14 shrink-0 rounded-sm object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <input
+                  className="w-full rounded-sm border border-line px-2 py-1 text-xs"
+                  value={img.caption}
+                  onChange={(e) => updateCaption(img.id, e.target.value)}
+                  placeholder="Caption"
+                />
+                <div className="mt-1 flex items-center justify-between">
+                  <code className="rounded bg-ink/5 px-1 text-[10px] text-ink/50">
+                    {img.token}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(img.id)}
+                    className="text-[11px] text-ink/40 hover:text-amber-900"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export default function KBForm({
+  fields,
+  onChange,
+  images,
+  onImagesChange,
+  onSubmit,
+  onClear,
+  loading,
+  error,
+  step,
+  onStepChange,
+}: Props) {
+  // step is now controlled by the parent (page.tsx) so the refresh icon in
+  // KBPreview can reset it to 0 without needing a ref or callback chain.
+  const setStep = onStepChange;
 
   function set<K extends keyof KBFormFields>(key: K, value: KBFormFields[K]) {
     onChange({ ...fields, [key]: value });
@@ -172,37 +332,8 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
     set("keywords", [...current, word].join(", "));
   }
 
-  function hasContent(f: KBFormFields): boolean {
-    return Boolean(
-      f.title.trim() ||
-        f.issueType.trim() ||
-        f.primaryEntityType.trim() ||
-        f.category.trim() ||
-        f.productVersion.trim() ||
-        f.symptoms.trim() ||
-        f.cause.trim() ||
-        f.resolutionSteps.trim() ||
-        f.keywords.trim()
-    );
-  }
-
   function clearForm() {
-    if (hasContent(fields) && !window.confirm("Clear all fields? This can't be undone.")) {
-      return;
-    }
-    onChange({
-      title: "",
-      issueType: "",
-      primaryEntityType: "",
-      category: "",
-      productVersion: "",
-      audience: "Internal",
-      symptoms: "",
-      cause: "",
-      resolutionSteps: "",
-      keywords: "",
-      tone: "technical",
-    });
+    onClear();
     setStep(0);
   }
 
@@ -351,6 +482,34 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
                 The writing tone is set automatically based on this choice.
               </p>
             </div>
+
+            {/* AWS documentation toggle */}
+            <div className="flex items-start justify-between gap-4 rounded-sm border border-line bg-white p-3">
+              <div>
+                <span className="font-mono text-[11px] uppercase tracking-widest text-ink/60">
+                  Research with AWS docs
+                </span>
+                <p className="mt-1 text-[11px] text-ink/45">
+                  Let Claude check official AWS documentation while writing, and cite
+                  sources. More accurate for AWS issues, but slower.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={fields.useAwsDocs}
+                onClick={() => set("useAwsDocs", !fields.useAwsDocs)}
+                className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${
+                  fields.useAwsDocs ? "bg-primary" : "bg-ink/20"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                    fields.useAwsDocs ? "left-[1.375rem]" : "left-0.5"
+                  }`}
+                />
+              </button>
+            </div>
           </>
         )}
 
@@ -375,6 +534,11 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
                 placeholder="Root cause, if known"
               />
             </Field>
+            <ScreenshotAttacher
+              section="symptoms"
+              images={images}
+              onImagesChange={onImagesChange}
+            />
           </>
         )}
 
@@ -430,6 +594,12 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
                 </div>
               )}
             </div>
+
+            <ScreenshotAttacher
+              section="resolution"
+              images={images}
+              onImagesChange={onImagesChange}
+            />
           </>
         )}
 
@@ -451,10 +621,18 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
               <ReviewRow label="Category" value={fields.category} />
               <ReviewRow label="Product / Version" value={fields.productVersion} />
               <ReviewRow label="Audience" value={fields.audience} />
+              <ReviewRow
+                label="AWS docs research"
+                value={fields.useAwsDocs ? "Enabled" : "Disabled"}
+              />
               <ReviewRow label="Symptoms" value={fields.symptoms} />
               <ReviewRow label="Cause" value={fields.cause} />
               <ReviewRow label="Resolution Steps" value={fields.resolutionSteps} />
               <ReviewRow label="Keywords" value={fields.keywords} />
+              <ReviewRow
+                label="Screenshots attached"
+                value={images.length ? `${images.length}` : ""}
+              />
             </div>
           </>
         )}
@@ -489,7 +667,11 @@ export default function KBForm({ fields, onChange, onSubmit, loading, error }: P
               disabled={loading || !basicsValid}
               className="flex-1 rounded-sm bg-primary px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {loading ? "Generating (checking AWS docs)…" : "Generate KB Article"}
+              {loading
+                ? fields.useAwsDocs
+                  ? "Generating (checking AWS docs)…"
+                  : "Generating…"
+                : "Generate KB Article"}
             </button>
           )}
         </div>

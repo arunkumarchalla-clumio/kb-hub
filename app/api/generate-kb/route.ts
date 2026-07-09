@@ -11,7 +11,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as GenerateKBRequest;
-    const { fields } = body;
+    const { fields, images } = body;
 
     if (!fields || !fields.title?.trim()) {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const markdown = await generateKBArticle(fields);
+    const markdown = await generateKBArticle(fields, images || []);
     return NextResponse.json({ markdown });
   } catch (err) {
     console.error("generate-kb error:", err);

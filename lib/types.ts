@@ -15,6 +15,20 @@ export const AUDIENCE_TONE_MAP: Record<Audience, ArticleTone> = {
   Engineering: "engineering",
 };
 
+export type ImageSection = "symptoms" | "resolution";
+
+// An attached screenshot. `token` is the placeholder ([[img:sy1]]) that can
+// appear in the article Markdown; it's expanded to the real image at
+// render/export time. `dataUri` is a full data:image/...;base64,... string.
+export interface KBImage {
+  id: string; // e.g. "sy1", "re1"
+  token: string; // e.g. "[[img:sy1]]"
+  section: ImageSection;
+  caption: string;
+  dataUri: string;
+  mediaType: string; // e.g. "image/png"
+}
+
 export interface KBFormFields {
   title: string;
   issueType: string;
@@ -22,6 +36,7 @@ export interface KBFormFields {
   category: string;
   productVersion: string;
   audience: Audience;
+  useAwsDocs: boolean;
   symptoms: string;
   cause: string;
   resolutionSteps: string;
@@ -31,6 +46,7 @@ export interface KBFormFields {
 
 export interface GenerateKBRequest {
   fields: KBFormFields;
+  images?: KBImage[];
 }
 
 export interface GenerateKBResponse {
