@@ -32,7 +32,11 @@ const EMPTY_FIELDS: KBFormFields = {
   diagramImage: [],
 };
 
-const DRAFT_STORAGE_KEY = "kb-creator-draft-v1";
+const DRAFT_STORAGE_KEY = "kb-creator-draft-v2"; // bumped: diagramImage excluded from save
+
+// Fields that are safe to persist — excludes diagramImage (base64 images
+// would blow the ~5MB localStorage quota). Images/diagrams are session-only.
+type DraftFields = Omit<KBFormFields, "diagramImage">;
 
 function hasAnyContent(fields: KBFormFields): boolean {
   return Boolean(
@@ -79,9 +83,10 @@ export default function Home() {
     try {
       const saved = window.localStorage.getItem(DRAFT_STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved) as KBFormFields;
-        if (parsed && typeof parsed.title === "string" && hasAnyContent(parsed)) {
-          setFields({ ...EMPTY_FIELDS, ...parsed });
+        const parsed = JSON.parse(saved) as DraftFields;
+        if (parsed && typeof parsed.title === "string" && hasAnyContent({ ...EMPTY_FIELDS, ...parsed })) {
+          // diagramImage is not persisted — restore everything else.
+          setFields({ ...EMPTY_FIELDS, ...parsed, diagramImage: [] });
           setRestoredDraft(true);
         }
       }
@@ -92,12 +97,15 @@ export default function Home() {
     }
   }, []);
 
-  // Autosave the draft (text fields only) as they change.
+  // Autosave all text fields on every change. diagramImage is excluded —
+  // base64 image data would quickly exhaust localStorage's ~5MB quota.
+  // Diagram files are session-only and must be re-attached after a restart.
   useEffect(() => {
     if (!draftHydrated) return;
     try {
+      const draftFields: DraftFields = (({ diagramImage: _, ...rest }) => rest)(fields);
       if (hasAnyContent(fields)) {
-        window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(fields));
+        window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftFields));
       } else {
         window.localStorage.removeItem(DRAFT_STORAGE_KEY);
       }
