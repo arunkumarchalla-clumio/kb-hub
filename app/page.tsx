@@ -29,6 +29,7 @@ const EMPTY_FIELDS: KBFormFields = {
   keywords: "",
   tone: "technical",
   referenceLinks: [],
+  diagramImage: [],
 };
 
 const DRAFT_STORAGE_KEY = "kb-creator-draft-v1";

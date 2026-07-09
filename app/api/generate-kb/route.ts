@@ -20,7 +20,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const markdown = await generateKBArticle(fields, images || []);
+    const markdown = await generateKBArticle(
+      fields,
+      images || [],
+      Array.isArray(fields.diagramImage) ? fields.diagramImage : []
+    );
     return NextResponse.json({ markdown });
   } catch (err) {
     console.error("generate-kb error:", err);

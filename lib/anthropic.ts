@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ArticleTone, KBFormFields, KBImage, ReferenceLink } from "./types";
+import type { ArticleTone, DiagramImage, KBFormFields, KBImage, ReferenceLink } from "./types";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -106,6 +106,21 @@ ${lines}
 Place each token on its own line in the section it belongs to, at the point where it best illustrates the surrounding text. Use the token exactly as written (e.g. ${images[0].token}); do NOT write Markdown image syntax yourself — the token is replaced with the real image afterward. Only place a token where it genuinely helps; if a screenshot isn't useful anywhere, you may omit its token.`;
 }
 
+// Tells Claude diagram images/PDFs are attached for analysis, not embedding.
+function diagramInstruction(diagrams: DiagramImage[]): string {
+  const count = diagrams.length;
+  const hasPdf = diagrams.some((d) => d.mediaType === "application/pdf");
+  const hasImg = diagrams.some((d) => d.mediaType !== "application/pdf");
+
+  const fileDesc = [
+    hasPdf && "PDF document(s) (which may contain multiple pages)",
+    hasImg && "screenshot/diagram image(s)",
+  ].filter(Boolean).join(" and ");
+
+  return `${count} analysis ${count === 1 ? "file has" : "files have"} been attached (${fileDesc}) — shown as the first ${count === 1 ? "item" : `${count} items`} below. These are NOT content to embed in the article — they are context for you to analyze. Study ${count === 1 ? "it" : "all of them"} carefully: identify the services, components, data flow, failure points, error states, or any relevant technical detail ${count === 1 ? "it shows" : "they show"}. For multi-page PDFs, read all pages. Use what you observe to enrich the Symptoms, Cause, and Resolution sections. Do not reference "the image", "the PDF", or "the attached files" explicitly in the article text; just incorporate the technical understanding they give you.
+`;
+}
+
 // Tells Claude exactly which reference links to include and how to mark them.
 function referenceInstructions(links: ReferenceLink[]): string {
   if (!links.length) return "";
@@ -124,7 +139,8 @@ ${lines}`;
 
 export async function generateKBArticle(
   fields: KBFormFields,
-  images: KBImage[] = []
+  images: KBImage[] = [],
+  diagrams: DiagramImage[] = []
 ): Promise<string> {
   const tone: ArticleTone = TONE_INSTRUCTIONS[fields.tone] ? fields.tone : "technical";
   const useAwsDocs = Boolean(fields.useAwsDocs);
@@ -132,7 +148,10 @@ export async function generateKBArticle(
     ? fields.referenceLinks.filter((l) => l.url.trim())
     : [];
 
-  const promptText = `Generate a KB article from these fields:
+  // If diagram files were uploaded, their analysis instruction goes first.
+  const diagramPrefix = diagrams.length > 0 ? diagramInstruction(diagrams) : "";
+
+  const promptText = `${diagramPrefix}Generate a KB article from these fields:
 
 Title: ${fields.title || "(not provided)"}
 Issue Type: ${fields.issueType || "(not provided)"}
@@ -148,6 +167,33 @@ Keywords: ${fields.keywords || "(not provided)"}${referenceInstructions(links)}$
   const content: Anthropic.Beta.BetaContentBlockParam[] = [
     { type: "text", text: promptText },
   ];
+
+  // Diagram files come first — they're the "big picture" context.
+  // PDFs → document blocks (full text+layout, all pages).
+  // Images → image blocks (vision analysis).
+  for (const diagram of diagrams) {
+    const base64 = diagram.dataUri.includes(",")
+      ? diagram.dataUri.slice(diagram.dataUri.indexOf(",") + 1)
+      : diagram.dataUri;
+
+    if (diagram.mediaType === "application/pdf") {
+      content.push({
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: base64 },
+      } as Anthropic.Beta.BetaContentBlockParam);
+    } else {
+      content.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: diagram.mediaType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+          data: base64,
+        },
+      });
+    }
+  }
+
+  // Illustrative screenshots follow, in section order.
   for (const img of images) {
     const base64 = img.dataUri.includes(",")
       ? img.dataUri.slice(img.dataUri.indexOf(",") + 1)

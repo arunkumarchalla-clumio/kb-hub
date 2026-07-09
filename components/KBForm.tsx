@@ -7,6 +7,7 @@ import {
   AUDIENCE_OPTIONS,
   AUDIENCE_TONE_MAP,
   type Audience,
+  type DiagramImage,
   type ImageSection,
   type KBFormFields,
   type KBImage,
@@ -52,6 +53,52 @@ const OTHER_VALUE = "__other__";
 // request and slow generation. 4MB per image is a generous ceiling.
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+// Anthropic's API rejects images where either dimension exceeds 8000px.
+// Retina/HiDPI screenshots on Mac are 2× resolution, so a full-page capture
+// can easily be 10 000px+ tall. This function downscales the image in the
+// browser using a canvas before it ever leaves the machine — aspect ratio is
+// preserved, and anything already within the limit is returned unchanged.
+const MAX_DIMENSION_PX = 7800; // stay comfortably under the 8000px hard limit
+
+async function resizeImageIfNeeded(dataUri: string, mediaType: string): Promise<string> {
+  // GIFs can be animated; canvas would flatten them, so skip resizing.
+  if (mediaType === "image/gif") return dataUri;
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img;
+
+      // Already within limits — return the original unchanged.
+      if (w <= MAX_DIMENSION_PX && h <= MAX_DIMENSION_PX) {
+        resolve(dataUri);
+        return;
+      }
+
+      // Scale down so the longer dimension is exactly MAX_DIMENSION_PX.
+      const scale = MAX_DIMENSION_PX / Math.max(w, h);
+      const targetW = Math.round(w * scale);
+      const targetH = Math.round(h * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(dataUri); return; }
+
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+      // Use JPEG for photos/screenshots (smaller), PNG for transparent images.
+      const outputType = mediaType === "image/png" ? "image/png" : "image/jpeg";
+      const quality = 0.92; // high quality, ~10–20% smaller than lossless
+      resolve(canvas.toDataURL(outputType, quality));
+    };
+    img.onerror = () => reject(new Error("Image decode failed"));
+    img.src = dataUri;
+  });
+}
+
+// ── Screenshot attacher (Steps 2 & 3) ────────────────────────────────────────
 
 const TONE_LABELS: Record<KBFormFields["tone"], string> = {
   technical: "Technical (IT admins)",
@@ -203,12 +250,13 @@ function ScreenshotAttacher({
         setUploadError("Each image must be under 4 MB.");
         continue;
       }
-      const dataUri = await new Promise<string>((resolve, reject) => {
+      const rawUri = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = () => reject(new Error("read failed"));
         reader.readAsDataURL(file);
       });
+      const dataUri = await resizeImageIfNeeded(rawUri, file.type);
       const id = makeImageId(section, counter++);
       additions.push({
         id,
@@ -298,6 +346,241 @@ function ScreenshotAttacher({
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ── Diagram / workflow image uploader (Step 1) ────────────────────────────────
+// Accepts multiple optional images or PDFs. Claude reads and analyzes their
+// content to enrich the article — files are NOT embedded in the output.
+// Images: PNG, JPEG, WebP, GIF — max 5 MB each.
+// PDFs:   max 32 MB each. Safari "File → Export as PDF" captures an entire
+//         scrollable page in one file — the easiest option for long pages.
+
+const MAX_DIAGRAM_BYTES = 32 * 1024 * 1024;
+const ACCEPTED_DIAGRAM_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+];
+
+// Stable ID counter for diagram items (separate from image section tokens).
+let diagramCounter = 0;
+function newDiagramId() { return `diag-${++diagramCounter}`; }
+
+// DiagramImage extended with a local stable id for React keys and removal.
+interface DiagramEntry extends DiagramImage { entryId: string; }
+
+function DiagramUploader({
+  diagrams,
+  onChange,
+}: {
+  diagrams: DiagramImage[];
+  onChange: (diagrams: DiagramImage[]) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+
+  // We store entries with stable ids internally; callers receive plain DiagramImage[].
+  // On mount, assign ids to any pre-existing items.
+  const [entries, setEntries] = useState<DiagramEntry[]>(() =>
+    diagrams.map((d) => ({ ...d, entryId: newDiagramId() }))
+  );
+
+  // Keep parent in sync whenever entries change.
+  function update(next: DiagramEntry[]) {
+    setEntries(next);
+    onChange(next.map(({ entryId: _, ...d }) => d));
+  }
+
+  async function processFiles(files: File[]) {
+    setUploadError("");
+    const additions: DiagramEntry[] = [];
+
+    for (const file of files) {
+      if (!ACCEPTED_DIAGRAM_TYPES.includes(file.type)) {
+        setUploadError("Supported formats: PNG, JPEG, WebP, GIF, or PDF.");
+        continue;
+      }
+      const limit = file.type === "application/pdf" ? MAX_DIAGRAM_BYTES : 5 * 1024 * 1024;
+      if (file.size > limit) {
+        setUploadError(
+          file.type === "application/pdf" ? "PDF must be under 32 MB." : "Image must be under 5 MB."
+        );
+        continue;
+      }
+      const rawUri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("read failed"));
+        reader.readAsDataURL(file);
+      });
+      const dataUri = file.type === "application/pdf"
+        ? rawUri
+        : await resizeImageIfNeeded(rawUri, file.type);
+      additions.push({
+        entryId: newDiagramId(),
+        dataUri,
+        mediaType: file.type,
+        filename: file.name,
+      });
+    }
+
+    if (additions.length) update([...entries, ...additions]);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    processFiles(Array.from(e.dataTransfer.files));
+  }
+
+  function remove(entryId: string) {
+    update(entries.filter((e) => e.entryId !== entryId));
+  }
+
+  return (
+    <div>
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="font-mono text-[11px] uppercase tracking-widest text-ink/60">
+            Workflow / Diagnostic Files
+          </span>
+          <span className="ml-2 font-mono text-[10px] text-ink/35">optional</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="rounded-sm border border-line px-2.5 py-1 text-[11px] text-ink/70 hover:border-primary hover:text-primary-dark"
+        >
+          + Add file
+        </button>
+      </div>
+
+      {uploadError && <p className="mt-1 text-[11px] text-amber-900">{uploadError}</p>}
+
+      {/* Drop zone — shown when empty */}
+      {entries.length === 0 && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={onDrop}
+          onClick={() => fileRef.current?.click()}
+          className={`mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed px-4 py-6 text-center transition ${
+            isDragging
+              ? "border-primary bg-primary/5"
+              : "border-line bg-white/60 hover:border-primary/50 hover:bg-primary/5"
+          }`}
+        >
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+               strokeLinejoin="round" className="text-ink/30">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <div>
+            <p className="text-sm font-medium text-ink/60">Drop files or click to browse</p>
+            <p className="mt-1 text-[11px] text-ink/40">
+              AWS topology, backup task graph, error log, architecture diagram —
+              Claude will analyze them all to write a more accurate article.
+            </p>
+            <p className="mt-1 text-[11px] text-ink/35">
+              PNG, JPEG, WebP, GIF (max 5 MB) &nbsp;·&nbsp; PDF (max 32 MB)
+            </p>
+            <p className="mt-1.5 rounded bg-primary/5 px-2 py-1 text-[10px] text-primary-dark">
+              💡 Safari → File → Export as PDF captures an entire scrollable page
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* File list — shown when items exist */}
+      {entries.length > 0 && (
+        <>
+          <ul className="mt-2 space-y-2">
+            {entries.map((entry, i) => {
+              const isPdf = entry.mediaType === "application/pdf";
+              return (
+                <li
+                  key={entry.entryId}
+                  className="flex gap-3 rounded-sm border border-primary/20 bg-primary/5 p-2.5"
+                >
+                  {/* Thumbnail */}
+                  {isPdf ? (
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm border border-line bg-white">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                           stroke="#7B3F87" strokeWidth="1.5" strokeLinecap="round"
+                           strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="8" y1="13" x2="16" y2="13"/>
+                        <line x1="8" y1="17" x2="16" y2="17"/>
+                      </svg>
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={entry.dataUri}
+                      alt={entry.filename}
+                      className="h-14 w-14 shrink-0 rounded-sm border border-line object-cover"
+                    />
+                  )}
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-xs font-medium text-ink/80">{entry.filename}</p>
+                      <button
+                        type="button"
+                        onClick={() => remove(entry.entryId)}
+                        className="shrink-0 text-[11px] text-ink/35 hover:text-amber-900"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-primary-dark">
+                      ✓ Analysis file {i + 1} — Claude will read this, not embed it
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Drop zone below list for adding more */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={onDrop}
+            className={`mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed px-3 py-2 text-[11px] text-ink/45 transition ${
+              isDragging ? "border-primary bg-primary/5 text-primary-dark" : "border-line hover:border-primary/40"
+            }`}
+            onClick={() => fileRef.current?.click()}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                 strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add another file
+          </div>
+        </>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPTED_DIAGRAM_TYPES.join(",")}
+        multiple
+        className="hidden"
+        onChange={(e) => e.target.files && processFiles(Array.from(e.target.files))}
+      />
     </div>
   );
 }
@@ -623,6 +906,12 @@ export default function KBForm({
                 />
               </button>
             </div>
+
+            {/* Workflow / diagnostic files — analyzed by Claude, not embedded */}
+            <DiagramUploader
+              diagrams={fields.diagramImage}
+              onChange={(d) => set("diagramImage", d)}
+            />
           </>
         )}
 
@@ -741,6 +1030,14 @@ export default function KBForm({
               <ReviewRow
                 label="AWS docs research"
                 value={fields.useAwsDocs ? "Enabled" : "Disabled"}
+              />
+              <ReviewRow
+                label="Workflow / diagnostic files"
+                value={
+                  fields.diagramImage.length
+                    ? fields.diagramImage.map((d) => d.filename).join(", ")
+                    : ""
+                }
               />
               <ReviewRow label="Symptoms" value={fields.symptoms} />
               <ReviewRow label="Cause" value={fields.cause} />
