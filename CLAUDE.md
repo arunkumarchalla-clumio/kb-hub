@@ -9,7 +9,7 @@ This file is the first thing Claude Code reads when it opens this project. Keep 
 - Framework: Next.js 14 (App Router) + TypeScript
 - Styling: Tailwind CSS
 - AI: Anthropic API (`@anthropic-ai/sdk`), called server-side only, from `app/api/generate-kb/route.ts`
-- Hosting target: Vercel
+- Runs locally via `npm run dev`
 
 ## Folder map
 
@@ -42,7 +42,7 @@ Commvault/Clumio documentation grounding was scoped out for now — see git hist
 
 ## Environment variables
 
-- `ANTHROPIC_API_KEY` — required. Set locally in `.env.local` (never commit it) and in Vercel's project settings for deployed environments.
+- `ANTHROPIC_API_KEY` — required. Set locally in `.env.local` (never commit it).
 
 ## Out of scope for now
 

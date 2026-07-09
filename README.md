@@ -2,7 +2,7 @@
 
 Turn structured notes (problem, symptoms, cause, resolution steps) into a formatted Knowledge Base article, using Claude to do the writing.
 
-## Local development
+## Running the project
 
 ```bash
 npm install
@@ -12,10 +12,13 @@ npm run dev
 
 Open http://localhost:3000.
 
-## Project layout
+This project runs entirely locally. No deployment needed — just keep `npm run dev` running while you use it.
 
-See `CLAUDE.md` for the full map. In short: `app/page.tsx` is the UI, `app/api/generate-kb/route.ts` is the only server-side code that calls the Anthropic API, and `lib/anthropic.ts` holds the system prompt that defines the article structure.
+## Version control
 
-## Deploying
+```bash
+git add -A
+git commit -m "your message"
+```
 
-See the deployment walkthrough provided alongside this project for step-by-step Vercel instructions. In short: push to GitHub, import into Vercel, set the `ANTHROPIC_API_KEY` environment variable, deploy.
+The project is managed as a local Git repository. Keep `.env.local` out of commits — it is already listed in `.gitignore`.

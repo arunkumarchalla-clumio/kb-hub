@@ -351,11 +351,12 @@ function ScreenshotAttacher({
 }
 
 // ── Diagram / workflow image uploader (Step 1) ────────────────────────────────
-// Accepts multiple optional images or PDFs. Claude reads and analyzes their
-// content to enrich the article — files are NOT embedded in the output.
-// Images: PNG, JPEG, WebP, GIF — max 5 MB each.
-// PDFs:   max 32 MB each. Safari "File → Export as PDF" captures an entire
-//         scrollable page in one file — the easiest option for long pages.
+// Accepts multiple optional images or PDFs.
+// PDFs are rasterized page-by-page in the browser (using pdfjs-dist) into
+// JPEG images before being sent to the API. This sidesteps Anthropic's
+// "Could not process PDF" error which occurs with Safari/Chrome exported PDFs
+// that use non-standard PDF structures. Rasterized images work reliably with
+// Claude's vision and are already the right format.
 
 const MAX_DIAGRAM_BYTES = 32 * 1024 * 1024;
 const ACCEPTED_DIAGRAM_TYPES = [
@@ -365,6 +366,45 @@ const ACCEPTED_DIAGRAM_TYPES = [
   "image/webp",
   "application/pdf",
 ];
+
+// Rasterize every page of a PDF ArrayBuffer to JPEG data-URIs.
+// Returns one DiagramImage per page. Uses pdfjs-dist in the browser.
+async function pdfToImages(
+  arrayBuffer: ArrayBuffer,
+  filename: string
+): Promise<DiagramImage[]> {
+  // Dynamically import pdfjs-dist so it only loads in the browser bundle.
+  const pdfjsLib = await import("pdfjs-dist");
+  // Point the worker at the bundled worker file served by Next.js.
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+  const pdf = await loadingTask.promise;
+  const results: DiagramImage[] = [];
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    // Render at 2× scale for sharpness; cap to stay under the 7800px limit.
+    const viewport = page.getViewport({ scale: 2 });
+    const scale = Math.min(2, MAX_DIMENSION_PX / Math.max(viewport.width, viewport.height));
+    const scaledViewport = page.getViewport({ scale });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(scaledViewport.width);
+    canvas.height = Math.round(scaledViewport.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) continue;
+
+    await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+    const dataUri = canvas.toDataURL("image/jpeg", 0.92);
+    const pageName = pdf.numPages === 1
+      ? filename
+      : `${filename} (page ${pageNum} of ${pdf.numPages})`;
+    results.push({ dataUri, mediaType: "image/jpeg", filename: pageName });
+  }
+
+  return results;
+}
 
 // Stable ID counter for diagram items (separate from image section tokens).
 let diagramCounter = 0;
@@ -383,14 +423,13 @@ function DiagramUploader({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   // We store entries with stable ids internally; callers receive plain DiagramImage[].
-  // On mount, assign ids to any pre-existing items.
   const [entries, setEntries] = useState<DiagramEntry[]>(() =>
     diagrams.map((d) => ({ ...d, entryId: newDiagramId() }))
   );
 
-  // Keep parent in sync whenever entries change.
   function update(next: DiagramEntry[]) {
     setEntries(next);
     onChange(next.map(({ entryId: _, ...d }) => d));
@@ -398,35 +437,48 @@ function DiagramUploader({
 
   async function processFiles(files: File[]) {
     setUploadError("");
+    setProcessing(true);
     const additions: DiagramEntry[] = [];
 
-    for (const file of files) {
-      if (!ACCEPTED_DIAGRAM_TYPES.includes(file.type)) {
-        setUploadError("Supported formats: PNG, JPEG, WebP, GIF, or PDF.");
-        continue;
+    try {
+      for (const file of files) {
+        if (!ACCEPTED_DIAGRAM_TYPES.includes(file.type)) {
+          setUploadError("Supported formats: PNG, JPEG, WebP, GIF, or PDF.");
+          continue;
+        }
+        if (file.size > MAX_DIAGRAM_BYTES) {
+          setUploadError(
+            file.type === "application/pdf" ? "PDF must be under 32 MB." : "Image must be under 5 MB."
+          );
+          continue;
+        }
+
+        if (file.type === "application/pdf") {
+          // Rasterize each page to a JPEG image client-side.
+          // This avoids the Anthropic "Could not process PDF" error caused by
+          // non-standard PDF structures from Safari/Chrome export.
+          const arrayBuffer = await file.arrayBuffer();
+          const pageImages = await pdfToImages(arrayBuffer, file.name);
+          for (const img of pageImages) {
+            additions.push({ entryId: newDiagramId(), ...img });
+          }
+        } else {
+          const rawUri = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error("read failed"));
+            reader.readAsDataURL(file);
+          });
+          const dataUri = await resizeImageIfNeeded(rawUri, file.type);
+          additions.push({ entryId: newDiagramId(), dataUri, mediaType: file.type, filename: file.name });
+        }
       }
-      const limit = file.type === "application/pdf" ? MAX_DIAGRAM_BYTES : 5 * 1024 * 1024;
-      if (file.size > limit) {
-        setUploadError(
-          file.type === "application/pdf" ? "PDF must be under 32 MB." : "Image must be under 5 MB."
-        );
-        continue;
-      }
-      const rawUri = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("read failed"));
-        reader.readAsDataURL(file);
-      });
-      const dataUri = file.type === "application/pdf"
-        ? rawUri
-        : await resizeImageIfNeeded(rawUri, file.type);
-      additions.push({
-        entryId: newDiagramId(),
-        dataUri,
-        mediaType: file.type,
-        filename: file.name,
-      });
+    } catch (err) {
+      setUploadError(
+        err instanceof Error ? `Failed to process file: ${err.message}` : "Failed to process file."
+      );
+    } finally {
+      setProcessing(false);
     }
 
     if (additions.length) update([...entries, ...additions]);
@@ -470,33 +522,47 @@ function DiagramUploader({
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={onDrop}
-          onClick={() => fileRef.current?.click()}
+          onClick={() => !processing && fileRef.current?.click()}
           className={`mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed px-4 py-6 text-center transition ${
-            isDragging
+            processing
+              ? "border-primary/40 bg-primary/5 cursor-wait"
+              : isDragging
               ? "border-primary bg-primary/5"
               : "border-line bg-white/60 hover:border-primary/50 hover:bg-primary/5"
           }`}
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-               strokeLinejoin="round" className="text-ink/30">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <div>
-            <p className="text-sm font-medium text-ink/60">Drop files or click to browse</p>
-            <p className="mt-1 text-[11px] text-ink/40">
-              AWS topology, backup task graph, error log, architecture diagram —
-              Claude will analyze them all to write a more accurate article.
-            </p>
-            <p className="mt-1 text-[11px] text-ink/35">
-              PNG, JPEG, WebP, GIF (max 5 MB) &nbsp;·&nbsp; PDF (max 32 MB)
-            </p>
-            <p className="mt-1.5 rounded bg-primary/5 px-2 py-1 text-[10px] text-primary-dark">
-              💡 Safari → File → Export as PDF captures an entire scrollable page
-            </p>
-          </div>
+          {processing ? (
+            <>
+              <svg className="animate-spin text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+              <p className="text-sm text-primary-dark">Rendering PDF pages…</p>
+            </>
+          ) : (
+            <>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                   strokeLinejoin="round" className="text-ink/30">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-ink/60">Drop files or click to browse</p>
+                <p className="mt-1 text-[11px] text-ink/40">
+                  AWS topology, backup task graph, error log, architecture diagram —
+                  Claude will analyze them all to write a more accurate article.
+                </p>
+                <p className="mt-1 text-[11px] text-ink/35">
+                  PNG, JPEG, WebP, GIF (max 5 MB) &nbsp;·&nbsp; PDF (max 32 MB)
+                </p>
+                <p className="mt-1.5 rounded bg-primary/5 px-2 py-1 text-[10px] text-primary-dark">
+                  💡 Safari → File → Export as PDF captures an entire scrollable page.
+                  PDFs are automatically converted to images before sending.
+                </p>
+              </div>
+            </>
+          )}
         </div>
       )}
 

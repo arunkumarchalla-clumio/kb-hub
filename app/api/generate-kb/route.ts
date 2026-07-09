@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateKBArticle } from "@/lib/anthropic";
 import type { GenerateKBRequest } from "@/lib/types";
 
-// The AWS documentation tool can add several round trips before Claude
-// finishes writing, so this needs more headroom than Vercel's 10s default.
-// Requires a Vercel plan that allows a function duration this high — Hobby
-// tops out lower, Pro allows up to 300s. Lower this if you're on Hobby.
-export const maxDuration = 60;
-
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as GenerateKBRequest;

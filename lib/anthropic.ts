@@ -5,6 +5,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const AWS_KNOWLEDGE_MCP_URL = "https://knowledge-mcp.global.api.aws";
 const AWS_KNOWLEDGE_MCP_SERVER_NAME = "aws-knowledge";
+// MCP connector beta header — required for the AWS Knowledge MCP server.
 const MCP_CONNECTOR_BETA = "mcp-client-2025-11-20";
 
 // FAQ rules differ by audience:
@@ -169,28 +170,20 @@ Keywords: ${fields.keywords || "(not provided)"}${referenceInstructions(links)}$
   ];
 
   // Diagram files come first — they're the "big picture" context.
-  // PDFs → document blocks (full text+layout, all pages).
-  // Images → image blocks (vision analysis).
+  // PDFs are rasterized to JPEG images client-side before reaching here,
+  // so all diagram entries arrive as image blocks.
   for (const diagram of diagrams) {
     const base64 = diagram.dataUri.includes(",")
       ? diagram.dataUri.slice(diagram.dataUri.indexOf(",") + 1)
       : diagram.dataUri;
-
-    if (diagram.mediaType === "application/pdf") {
-      content.push({
-        type: "document",
-        source: { type: "base64", media_type: "application/pdf", data: base64 },
-      } as Anthropic.Beta.BetaContentBlockParam);
-    } else {
-      content.push({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: diagram.mediaType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
-          data: base64,
-        },
-      });
-    }
+    content.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: diagram.mediaType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+        data: base64,
+      },
+    });
   }
 
   // Illustrative screenshots follow, in section order.
