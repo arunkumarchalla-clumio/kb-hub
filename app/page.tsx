@@ -28,6 +28,8 @@ const EMPTY_FIELDS: KBFormFields = {
   resolutionSteps: "",
   keywords: "",
   tone: "technical",
+  engineerName: "",
+  engineerEmail: "",
   referenceLinks: [],
   diagramImage: [],
 };
@@ -97,6 +99,18 @@ export default function Home() {
     }
   }, []);
 
+  // Restore generated article from sessionStorage when navigating back.
+  useEffect(() => {
+    try {
+      const savedTicket   = sessionStorage.getItem("kb-hub-draft-ticket");
+      const savedMarkdown = sessionStorage.getItem("kb-hub-draft-markdown");
+      if (savedTicket && savedMarkdown) {
+        setTicket(savedTicket);
+        setMarkdown(savedMarkdown);
+      }
+    } catch { /* sessionStorage unavailable */ }
+  }, []);
+
   // Autosave all text fields on every change. diagramImage is excluded —
   // base64 image data would quickly exhaust localStorage's ~5MB quota.
   // Diagram files are session-only and must be re-attached after a restart.
@@ -124,10 +138,14 @@ export default function Home() {
         body: JSON.stringify({ fields, images }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Something went wrong.");
-      }
+      if (!res.ok) throw new Error(data.error || "Something went wrong.");
       setMarkdown(data.markdown);
+      // Keep the generated article in session memory so navigating
+      // away and back (e.g. Go to Library → back) doesn't lose it.
+      try {
+        sessionStorage.setItem("kb-hub-draft-ticket", ticket);
+        sessionStorage.setItem("kb-hub-draft-markdown", data.markdown);
+      } catch { /* sessionStorage unavailable — fail silently */ }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -155,6 +173,20 @@ export default function Home() {
     setStep(0);
   }
 
+  async function handleSave() {
+    try {
+      const res = await fetch("/api/library/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticket, fields, markdown }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Save failed");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save article.");
+    }
+  }
+
   function newArticle() {
     if (
       (hasAnyContent(fields) || markdown) &&
@@ -171,6 +203,8 @@ export default function Home() {
     setTicket(makeTicketNumber());
     try {
       window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      sessionStorage.removeItem("kb-hub-draft-ticket");
+      sessionStorage.removeItem("kb-hub-draft-markdown");
     } catch {
       // ignore
     }
@@ -204,6 +238,13 @@ export default function Home() {
           </button>
 
           <div className="flex items-center gap-4">
+            
+            <a
+              href="/library"
+              className="hidden rounded-sm border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:border-white/50 hover:text-white sm:inline"
+            >
+              KB Library
+            </a>
             <span className="hidden font-display text-sm font-semibold uppercase tracking-widest text-white/70 sm:inline">
               {PROJECT_TITLE}
             </span>
@@ -274,6 +315,7 @@ export default function Home() {
           onMarkdownChange={setMarkdown}
           onRegenerate={handleRefreshRegenerate}
           onNewArticle={newArticle}
+          onSave={handleSave}
         />
       </div>
 

@@ -54,6 +54,8 @@ export interface KBFormFields {
   resolutionSteps: string;
   keywords: string;
   tone: ArticleTone;
+  engineerName: string;
+  engineerEmail: string;
   referenceLinks: ReferenceLink[];
   diagramImage: DiagramImage[];  // optional workflow/architecture images for analysis (Step 1)
 }
@@ -69,4 +71,11 @@ export interface GenerateKBResponse {
 
 export interface GenerateKBError {
   error: string;
+}
+
+// Engineer identity — entered once in Step 1, persisted to localStorage,
+// and saved with every article to the database.
+export interface EngineerIdentity {
+  name: string;
+  email: string;
 }

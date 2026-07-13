@@ -24,6 +24,7 @@ interface Props {
   onMarkdownChange: (markdown: string) => void;
   onRegenerate: () => void;
   onNewArticle: () => void;
+  onSave: () => Promise<void>;
 }
 
 export default function KBPreview({
@@ -35,10 +36,13 @@ export default function KBPreview({
   onMarkdownChange,
   onRegenerate,
   onNewArticle,
+  onSave,
 }: Props) {
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [exportingDocx, setExportingDocx] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
   // null = lightbox closed; string = the src of the image currently zoomed.
   const [zoomed, setZoomed] = useState<{ src: string; alt: string } | null>(null);
 
@@ -651,22 +655,35 @@ export default function KBPreview({
             >
               {copied ? "Copied!" : "Copy MD"}
             </button>
-            <button
-              onClick={exportDocx}
-              disabled={exportingDocx}
-              className="rounded-sm border border-line px-3 py-1.5 text-sm hover:bg-ink/5 disabled:opacity-50"
-            >
-              {exportingDocx ? "Preparing…" : "Export Word (.docx)"}
-            </button>
-            <button
-              onClick={exportPdf}
-              className="rounded-sm border border-line px-3 py-1.5 text-sm hover:bg-ink/5"
-            >
-              Export PDF
-            </button>
+
+
           </div>
 
           <div className="mt-3 flex flex-wrap gap-3 border-t border-line pt-3">
+            <button
+              onClick={async () => {
+                setSaving(true);
+                setSaved(false);
+                await onSave();
+                setSaving(false);
+                setSaved(true);
+                setTimeout(() => setSaved(false), 3000);
+              }}
+              disabled={saving}
+              className={`rounded-sm border px-3 py-1.5 text-sm transition ${
+                saved
+                  ? "border-green-400 bg-green-50 text-green-700"
+                  : "border-primary/40 bg-primary/5 text-primary-dark hover:bg-primary/10"
+              } disabled:opacity-50`}
+            >
+              {saving ? "Saving…" : saved ? "✓ Saved to Library" : "Save to Library"}
+            </button>
+            <button
+              onClick={() => window.location.href = '/library'}
+              className="rounded-sm border border-line px-3 py-1.5 text-sm hover:bg-ink/5"
+            >
+              Go to Library
+            </button>
             <button
               onClick={onNewArticle}
               className="rounded-sm border border-line px-3 py-1.5 text-sm hover:bg-ink/5"

@@ -871,6 +871,26 @@ export default function KBForm({
       >
         {step === 0 && (
           <>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Your Name" hint="required">
+                <input
+                  className={inputClass}
+                  value={fields.engineerName}
+                  onChange={(e) => set("engineerName", e.target.value)}
+                  placeholder="e.g. Arun Kumar"
+                />
+              </Field>
+              <Field label="Your Email" hint="required">
+                <input
+                  className={inputClass}
+                  type="email"
+                  value={fields.engineerEmail}
+                  onChange={(e) => set("engineerEmail", e.target.value)}
+                  placeholder="e.g. arun@commvault.com"
+                />
+              </Field>
+            </div>
+
             <Field label="Title" hint="required">
               <input
                 autoFocus
