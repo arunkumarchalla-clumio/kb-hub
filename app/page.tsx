@@ -55,9 +55,12 @@ function hasAnyContent(fields: KBFormFields): boolean {
 }
 
 function makeTicketNumber() {
-  const year = new Date().getFullYear();
-  const seq = Math.floor(Math.random() * 9000 + 1000);
-  return `KB-${year}-${seq}`;
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const nn = String(Math.floor(Math.random() * 9000 + 1000));
+  return `KB-${yy}${mm}${dd}-${nn}`;
 }
 
 export default function Home() {
