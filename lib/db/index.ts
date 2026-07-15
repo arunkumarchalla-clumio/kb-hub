@@ -24,32 +24,33 @@ function initialise(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS kb_articles (
       id                TEXT PRIMARY KEY,
       title             TEXT NOT NULL,
-      engineer_name     TEXT NOT NULL DEFAULT '',
-      engineer_email    TEXT NOT NULL DEFAULT '',
-      audience          TEXT NOT NULL DEFAULT 'Internal',
-      issue_type        TEXT NOT NULL DEFAULT '',
-      entity_type       TEXT NOT NULL DEFAULT '',
-      category          TEXT NOT NULL DEFAULT '',
-      product_version   TEXT NOT NULL DEFAULT '',
-      status            TEXT NOT NULL DEFAULT 'draft',
-      symptoms          TEXT NOT NULL DEFAULT '',
-      cause             TEXT NOT NULL DEFAULT '',
-      resolution        TEXT NOT NULL DEFAULT '',
-      keywords          TEXT NOT NULL DEFAULT '',
-      markdown_content  TEXT NOT NULL DEFAULT '',
+      engineer_name     TEXT NOT NULL DEFAULT "",
+      engineer_email    TEXT NOT NULL DEFAULT "",
+      audience          TEXT NOT NULL DEFAULT "Internal",
+      issue_type        TEXT NOT NULL DEFAULT "",
+      entity_type       TEXT NOT NULL DEFAULT "",
+      category          TEXT NOT NULL DEFAULT "",
+      product_version   TEXT NOT NULL DEFAULT "",
+      status            TEXT NOT NULL DEFAULT "draft",
+      symptoms          TEXT NOT NULL DEFAULT "",
+      cause             TEXT NOT NULL DEFAULT "",
+      resolution        TEXT NOT NULL DEFAULT "",
+      keywords          TEXT NOT NULL DEFAULT "",
+      markdown_content  TEXT NOT NULL DEFAULT "",
       use_aws_docs      INTEGER NOT NULL DEFAULT 0,
       created_at        TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
       published_at      TEXT,
       archived_at       TEXT,
-      archived_by       TEXT NOT NULL DEFAULT ''
+      archived_by       TEXT NOT NULL DEFAULT "",
+      current_version   INTEGER NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS kb_reference_links (
       id          TEXT PRIMARY KEY,
       article_id  TEXT NOT NULL REFERENCES kb_articles(id) ON DELETE CASCADE,
       url         TEXT NOT NULL,
-      label       TEXT NOT NULL DEFAULT '',
+      label       TEXT NOT NULL DEFAULT "",
       is_internal INTEGER NOT NULL DEFAULT 0,
       sort_order  INTEGER NOT NULL DEFAULT 0
     );
@@ -57,33 +58,48 @@ function initialise(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS kb_archived_articles (
       id                TEXT PRIMARY KEY,
       title             TEXT NOT NULL,
-      engineer_name     TEXT NOT NULL DEFAULT '',
-      engineer_email    TEXT NOT NULL DEFAULT '',
-      audience          TEXT NOT NULL DEFAULT 'Internal',
-      issue_type        TEXT NOT NULL DEFAULT '',
-      entity_type       TEXT NOT NULL DEFAULT '',
-      category          TEXT NOT NULL DEFAULT '',
-      product_version   TEXT NOT NULL DEFAULT '',
-      status            TEXT NOT NULL DEFAULT 'archived',
-      symptoms          TEXT NOT NULL DEFAULT '',
-      cause             TEXT NOT NULL DEFAULT '',
-      resolution        TEXT NOT NULL DEFAULT '',
-      keywords          TEXT NOT NULL DEFAULT '',
-      markdown_content  TEXT NOT NULL DEFAULT '',
+      engineer_name     TEXT NOT NULL DEFAULT "",
+      engineer_email    TEXT NOT NULL DEFAULT "",
+      audience          TEXT NOT NULL DEFAULT "Internal",
+      issue_type        TEXT NOT NULL DEFAULT "",
+      entity_type       TEXT NOT NULL DEFAULT "",
+      category          TEXT NOT NULL DEFAULT "",
+      product_version   TEXT NOT NULL DEFAULT "",
+      status            TEXT NOT NULL DEFAULT "archived",
+      symptoms          TEXT NOT NULL DEFAULT "",
+      cause             TEXT NOT NULL DEFAULT "",
+      resolution        TEXT NOT NULL DEFAULT "",
+      keywords          TEXT NOT NULL DEFAULT "",
+      markdown_content  TEXT NOT NULL DEFAULT "",
       use_aws_docs      INTEGER NOT NULL DEFAULT 0,
       created_at        TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
       published_at      TEXT,
       archived_at       TEXT NOT NULL DEFAULT (datetime('now')),
-      archived_by       TEXT NOT NULL DEFAULT ''
+      archived_by       TEXT NOT NULL DEFAULT ""
     );
 
     CREATE TABLE IF NOT EXISTS kb_revisions (
       id               TEXT PRIMARY KEY,
       article_id       TEXT NOT NULL REFERENCES kb_articles(id) ON DELETE CASCADE,
-      markdown_content TEXT NOT NULL,
-      changed_by       TEXT NOT NULL DEFAULT '',
-      change_note      TEXT NOT NULL DEFAULT '',
+      version_number   INTEGER NOT NULL DEFAULT 1,
+      title            TEXT NOT NULL DEFAULT "",
+      engineer_name    TEXT NOT NULL DEFAULT "",
+      engineer_email   TEXT NOT NULL DEFAULT "",
+      audience         TEXT NOT NULL DEFAULT "Internal",
+      issue_type       TEXT NOT NULL DEFAULT "",
+      entity_type      TEXT NOT NULL DEFAULT "",
+      category         TEXT NOT NULL DEFAULT "",
+      product_version  TEXT NOT NULL DEFAULT "",
+      symptoms         TEXT NOT NULL DEFAULT "",
+      cause            TEXT NOT NULL DEFAULT "",
+      resolution       TEXT NOT NULL DEFAULT "",
+      keywords         TEXT NOT NULL DEFAULT "",
+      markdown_content TEXT NOT NULL DEFAULT "",
+      use_aws_docs     INTEGER NOT NULL DEFAULT 0,
+      changed_by       TEXT NOT NULL DEFAULT "",
+      change_note      TEXT NOT NULL DEFAULT "",
+      published_at     TEXT NOT NULL DEFAULT (datetime('now')),
       created_at       TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
@@ -131,34 +147,63 @@ export function saveArticle(article: Omit<ArticleRecord, "created_at" | "updated
 
   if (existing) {
     // Save a revision snapshot before updating
-    db.prepare(`
-      INSERT INTO kb_revisions (id, article_id, markdown_content, changed_by, change_note)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(
-      crypto.randomUUID(),
-      article.id,
-      article.markdown_content,
-      article.engineer_name,
-      "Updated"
-    );
+    // Get the next version number for this article
+const lastVersion = db
+  .prepare("SELECT MAX(version_number) as maxv FROM kb_revisions WHERE article_id = ?")
+  .get(article.id) as { maxv: number | null };
+const nextVersion = (lastVersion?.maxv ?? 0) + 1;
 
-    db.prepare(`
-      UPDATE kb_articles SET
-        title = ?, engineer_name = ?, engineer_email = ?,
-        audience = ?, issue_type = ?, entity_type = ?,
-        category = ?, product_version = ?, status = ?,
-        symptoms = ?, cause = ?, resolution = ?,
-        keywords = ?, markdown_content = ?, use_aws_docs = ?,
-        updated_at = datetime('now'), published_at = ?
-      WHERE id = ?
-    `).run(
-      article.title, article.engineer_name, article.engineer_email,
-      article.audience, article.issue_type, article.entity_type,
-      article.category, article.product_version, article.status,
-      article.symptoms, article.cause, article.resolution,
-      article.keywords, article.markdown_content, article.use_aws_docs,
-      article.published_at, article.id
-    );
+db.prepare(`
+  INSERT INTO kb_revisions (
+    id, article_id, version_number,
+    title, engineer_name, engineer_email,
+    audience, issue_type, entity_type, category, product_version,
+    symptoms, cause, resolution, keywords,
+    markdown_content, use_aws_docs,
+    changed_by, change_note, published_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+`).run(
+  crypto.randomUUID(),
+  article.id,
+  nextVersion,
+  article.title,
+  article.engineer_name,
+  article.engineer_email,
+  article.audience,
+  article.issue_type,
+  article.entity_type,
+  article.category,
+  article.product_version,
+  article.symptoms,
+  article.cause,
+  article.resolution,
+  article.keywords,
+  article.markdown_content,
+  article.use_aws_docs,
+  article.engineer_name,
+  nextVersion === 1 ? "Initial publish" : `Updated to v${nextVersion}`
+);
+
+    const newVersion = (lastVersion?.maxv ?? 0) + 1;
+
+db.prepare(`
+  UPDATE kb_articles SET
+    title = ?, engineer_name = ?, engineer_email = ?,
+    audience = ?, issue_type = ?, entity_type = ?,
+    category = ?, product_version = ?, status = ?,
+    symptoms = ?, cause = ?, resolution = ?,
+    keywords = ?, markdown_content = ?, use_aws_docs = ?,
+    updated_at = datetime('now'), published_at = ?,
+    current_version = ?
+  WHERE id = ?
+`).run(
+  article.title, article.engineer_name, article.engineer_email,
+  article.audience, article.issue_type, article.entity_type,
+  article.category, article.product_version, article.status,
+  article.symptoms, article.cause, article.resolution,
+  article.keywords, article.markdown_content, article.use_aws_docs,
+  article.published_at, newVersion, article.id
+   );
   } else {
     db.prepare(`
       INSERT INTO kb_articles (
@@ -192,10 +237,47 @@ export function getArticleById(id: string): ArticleRecord | undefined {
     .get(id) as ArticleRecord | undefined;
 }
 
-export function getRevisions(articleId: string) {
+export interface RevisionRecord {
+  id: string;
+  article_id: string;
+  version_number: number;
+  title: string;
+  engineer_name: string;
+  engineer_email: string;
+  audience: string;
+  issue_type: string;
+  entity_type: string;
+  category: string;
+  product_version: string;
+  symptoms: string;
+  cause: string;
+  resolution: string;
+  keywords: string;
+  markdown_content: string;
+  use_aws_docs: number;
+  changed_by: string;
+  change_note: string;
+  published_at: string;
+  created_at: string;
+}
+
+export function getVersions(articleId: string): RevisionRecord[] {
   return getDb()
-    .prepare("SELECT * FROM kb_revisions WHERE article_id = ? ORDER BY created_at DESC")
-    .all(articleId);
+    .prepare("SELECT * FROM kb_revisions WHERE article_id = ? ORDER BY version_number ASC")
+    .all(articleId) as RevisionRecord[];
+}
+
+export function getLatestVersionNumber(articleId: string): number {
+  const result = getDb()
+    .prepare("SELECT MAX(version_number) as maxv FROM kb_revisions WHERE article_id = ?")
+    .get(articleId) as { maxv: number | null };
+  return result?.maxv ?? 0;
+}
+
+export function getVersionByNumber(articleId: string, versionNumber: number): RevisionRecord | undefined {
+  return getDb()
+    .prepare("SELECT * FROM kb_revisions WHERE article_id = ? AND version_number = ?")
+    .get(articleId, versionNumber) as RevisionRecord | undefined;
 }
 
 // ── JSON export for Git sync ──────────────────────────────────────────────────

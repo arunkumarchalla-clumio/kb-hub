@@ -63,6 +63,28 @@ function makeTicketNumber() {
   return `KB-${yy}${mm}${dd}-${nn}`;
 }
 
+async function makeUniqueTicketNumber(): Promise<string> {
+  let attempts = 0;
+  while (attempts < 20) {
+    const candidate = makeTicketNumber();
+    try {
+      const res = await fetch(`/api/library/check-ticket?id=${candidate}`);
+      const data = await res.json();
+      if (!data.exists) return candidate;
+    } catch {
+      // If check fails, use the candidate anyway — better than blocking
+      return candidate;
+    }
+    attempts++;
+  }
+  // Fallback: append timestamp to guarantee uniqueness
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `KB-${yy}${mm}${dd}-${Date.now().toString().slice(-4)}`;
+}
+
 export default function Home() {
   const [ticket, setTicket] = useState("KB-----");
   const [fields, setFields] = useState<KBFormFields>(EMPTY_FIELDS);
@@ -79,9 +101,9 @@ export default function Home() {
   const [step, setStep] = useState(0);
   const formRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setTicket(makeTicketNumber());
-  }, []);
+useEffect(() => {
+  makeUniqueTicketNumber().then(setTicket);
+}, []);
 
   // Restore a saved draft once, on first load, if one exists and isn't empty.
   useEffect(() => {
@@ -203,7 +225,7 @@ export default function Home() {
     setError("");
     setRestoredDraft(false);
     setStep(0);
-    setTicket(makeTicketNumber());
+    makeUniqueTicketNumber().then(setTicket);
     try {
       window.localStorage.removeItem(DRAFT_STORAGE_KEY);
       sessionStorage.removeItem("kb-hub-draft-ticket");
