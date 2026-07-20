@@ -49,6 +49,7 @@ export default function ArticleDetailPage({
   const [error,   setError]   = useState("");
   const [copied,        setCopied]        = useState(false);
   const [exportingDocx, setExportingDocx] = useState(false);
+  const [versionCount,  setVersionCount]  = useState(1);
 
   useEffect(() => {
     fetch(`/api/library/article/${params.id}`)
@@ -268,6 +269,9 @@ export default function ArticleDetailPage({
               >
                 🕐 Version History
               </button>
+              <p className="text-center text-[11px] text-[#1E1A2E]/40">
+                v{article.current_version ?? 1} · {versionCount} version{versionCount !== 1 ? "s" : ""} total
+              </p>
               <button
                 onClick={exportDocx}
                 disabled={exportingDocx}

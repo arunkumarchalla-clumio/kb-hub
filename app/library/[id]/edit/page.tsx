@@ -172,25 +172,11 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
 
         {!loading && !error && (
           <>
-            {/* Republish action bar */}
-            <div className="mb-6 flex items-center justify-between rounded-sm border border-[#E3DFEE] bg-white px-4 py-3">
+            {/* Info bar */}
+            <div className="mb-6 rounded-sm border border-[#E3DFEE] bg-white px-4 py-3">
               <p className="text-sm text-[#1E1A2E]/60">
-                Walk through the steps below, update any fields, regenerate the article, then republish.
+                Walk through the steps below, update any fields, regenerate the article, then click <strong>Republish as v{currentVersion + 1}</strong> in the preview panel.
               </p>
-              <button
-                onClick={handleRepublish}
-                disabled={publishing || !markdown.trim() || published}
-                className={`rounded-sm px-4 py-2 text-sm font-semibold transition ${
-                  published
-                    ? "border border-green-400 bg-green-50 text-green-700"
-                    : "bg-[#1E1A2E] text-white hover:bg-[#1E1A2E]/85 disabled:opacity-40"
-                } disabled:cursor-not-allowed`}>
-                {published
-                  ? `✓ Published as v${currentVersion + 1} — redirecting…`
-                  : publishing
-                  ? "Publishing…"
-                  : `Republish as v${currentVersion + 1}`}
-              </button>
             </div>
 
             {error && (
@@ -224,6 +210,7 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
                 onRegenerate={() => { setStep(0); }}
                 onNewArticle={() => router.push("/library")}
                 onSave={handleRepublish}
+                publishLabel={`Republish as v${currentVersion + 1}`}
               />
             </div>
           </>

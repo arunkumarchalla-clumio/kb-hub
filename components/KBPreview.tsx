@@ -25,6 +25,7 @@ interface Props {
   onRegenerate: () => void;
   onNewArticle: () => void;
   onSave: () => Promise<void>;
+  publishLabel?: string;
 }
 
 export default function KBPreview({
@@ -37,6 +38,7 @@ export default function KBPreview({
   onRegenerate,
   onNewArticle,
   onSave,
+  publishLabel,
 }: Props) {
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [exportingDocx, setExportingDocx] = useState(false);
@@ -644,7 +646,7 @@ export default function KBPreview({
 
       {markdown && (
         <>
-          <div className="mt-4 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-3 border-t border-line pt-3">
             <button
               onClick={copy}
               className={`rounded-sm border px-3 py-1.5 text-sm transition ${
@@ -655,11 +657,6 @@ export default function KBPreview({
             >
               {copied ? "Copied!" : "Copy MD"}
             </button>
-
-
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-3 border-t border-line pt-3">
             <button
               onClick={async () => {
                 setSaving(true);
@@ -676,7 +673,7 @@ export default function KBPreview({
                   : "border-primary/40 bg-primary/5 text-primary-dark hover:bg-primary/10"
               } disabled:opacity-50`}
             >
-              {saving ? "Saving…" : saved ? "✓ Saved to Library" : "Save to Library"}
+              {saving ? "Publishing…" : saved ? "✓ Published" : (publishLabel || "Publish")}
             </button>
             <button
               onClick={() => window.location.href = '/library'}

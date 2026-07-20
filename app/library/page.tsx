@@ -211,7 +211,7 @@ export default function LibraryPage() {
                     <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Version</th>
                     <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Created</th>
                     <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Updated</th>
-                    <th className="px-4 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Archive</th>
+                    <th className="px-4 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,6 +248,17 @@ export default function LibraryPage() {
                       <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{fmt(a.created_at)}</td>
                       <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{fmt(a.updated_at)}</td>
                       <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); window.location.href = `/library/${a.id}/edit`; }}
+                          title="Edit this article"
+                          className="rounded p-1.5 text-[#1E1A2E]/30 hover:bg-[#7B3F87]/10 hover:text-[#4B2170] transition"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
                         <button
                           onClick={(e) => handleArchive(e, a.id, a.engineer_name)}
                           disabled={archiving === a.id}
@@ -264,6 +275,7 @@ export default function LibraryPage() {
                             </svg>
                           )}
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
