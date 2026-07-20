@@ -62,42 +62,37 @@ export default function VersionHistoryPage({ params }: { params: { id: string } 
       .catch(() => { setError("Failed to load version history."); setLoading(false); });
   }, [params.id]);
 
-  async function handleRestore(version: Version) {
+  function handleRestore(version: Version) {
     if (!window.confirm(
-      `Restore v${version.version_number} and open it in the edit page? ` +
-      `You can review and republish it from there.`
+      `Load v${version.version_number} into the edit page? ` +
+      `No changes will be saved until you click Republish.`
     )) return;
 
-    setRestoring(true);
+    // Store the version data in sessionStorage so the edit page can pre-fill from it.
+    // No API call here — restoring only loads data, never creates a new version.
     try {
-      // Save the restored version's content as the current article state
-      await fetch(`/api/library/republish/${params.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fields: {
-            title:              version.title,
-            engineerName:       version.engineer_name,
-            engineerEmail:      version.engineer_email,
-            audience:           version.audience,
-            issueType:          version.issue_type,
-            primaryEntityType:  version.entity_type,
-            category:           version.category,
-            productVersion:     version.product_version,
-            symptoms:           version.symptoms,
-            cause:              version.cause,
-            resolutionSteps:    version.resolution,
-            keywords:           version.keywords,
-            useAwsDocs:         false,
-          },
-          markdown: version.markdown_content,
-        }),
-      });
-      router.push(`/library/${params.id}/edit`);
-    } catch {
-      alert("Failed to restore version. Please try again.");
-      setRestoring(false);
-    }
+      sessionStorage.setItem(
+        `kb-hub-restore-${params.id}`,
+        JSON.stringify({
+          title:             version.title,
+          engineerName:      version.engineer_name,
+          engineerEmail:     version.engineer_email,
+          audience:          version.audience,
+          issueType:         version.issue_type,
+          primaryEntityType: version.entity_type,
+          category:          version.category,
+          productVersion:    version.product_version,
+          symptoms:          version.symptoms,
+          cause:             version.cause,
+          resolutionSteps:   version.resolution,
+          keywords:          version.keywords,
+          markdown:          version.markdown_content,
+          restoredFrom:      version.version_number,
+        })
+      );
+    } catch {}
+
+    router.push(`/library/${params.id}/edit`);
   }
 
   return (

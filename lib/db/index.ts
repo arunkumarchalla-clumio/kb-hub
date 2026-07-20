@@ -184,9 +184,8 @@ db.prepare(`
   nextVersion === 1 ? "Initial publish" : `Updated to v${nextVersion}`
 );
 
-    const newVersion = (lastVersion?.maxv ?? 0) + 1;
-
-db.prepare(`
+    // Reuse nextVersion — already calculated correctly before revision insert
+    db.prepare(`
   UPDATE kb_articles SET
     title = ?, engineer_name = ?, engineer_email = ?,
     audience = ?, issue_type = ?, entity_type = ?,
@@ -202,8 +201,8 @@ db.prepare(`
   article.category, article.product_version, article.status,
   article.symptoms, article.cause, article.resolution,
   article.keywords, article.markdown_content, article.use_aws_docs,
-  article.published_at, newVersion, article.id
-   );
+  article.published_at, nextVersion, article.id
+);
   } else {
     db.prepare(`
       INSERT INTO kb_articles (

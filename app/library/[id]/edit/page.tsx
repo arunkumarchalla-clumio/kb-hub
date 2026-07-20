@@ -34,11 +34,12 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
   const [markdown,   setMarkdown]   = useState("");
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState("");
-  const [publishing, setPublishing] = useState(false);
-  const [published,  setPublished]  = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [step,       setStep]       = useState(0);
+  const [publishing,    setPublishing]    = useState(false);
+  const [published,     setPublished]     = useState(false);
+  const [generating,    setGenerating]    = useState(false);
+  const [step,          setStep]          = useState(0);
   const [currentVersion, setCurrentVersion] = useState(1);
+  const [restoreNotice, setRestoreNotice] = useState("");
 
   // Load the existing article and pre-fill all form fields
   useEffect(() => {
@@ -68,6 +69,38 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
           diagramImage:       [],
         });
         setLoading(false);
+
+        // Check if a version restore was requested — overwrite fields with restored data
+        try {
+          const restoreKey = `kb-hub-restore-${d.article.id}`;
+          const restoreData = sessionStorage.getItem(restoreKey);
+          if (restoreData) {
+            const r = JSON.parse(restoreData);
+            setFields({
+              title:             r.title || "",
+              issueType:         r.issueType || "",
+              primaryEntityType: r.primaryEntityType || "",
+              category:          r.category || "",
+              productVersion:    r.productVersion || "",
+              audience:          r.audience || "Internal",
+              useAwsDocs:        false,
+              symptoms:          r.symptoms || "",
+              cause:             r.cause || "",
+              resolutionSteps:   r.resolutionSteps || "",
+              keywords:          r.keywords || "",
+              tone:              "technical",
+              engineerName:      r.engineerName || "",
+              engineerEmail:     r.engineerEmail || "",
+              referenceLinks:    [],
+              diagramImage:      [],
+            });
+            setMarkdown(r.markdown || "");
+            // Show a banner indicating which version was restored
+            setRestoreNotice(`Loaded v${r.restoredFrom} snapshot — make any changes then click Regenerate and Republish.`);
+            // Clear the restore data so it doesn't persist on next visit
+            sessionStorage.removeItem(restoreKey);
+          }
+        } catch {}
       })
       .catch(() => { setError("Failed to load article."); setLoading(false); });
   }, [params.id]);
@@ -179,6 +212,12 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
               </p>
             </div>
 
+            {restoreNotice && (
+              <div className="mb-4 flex items-center justify-between rounded-sm border border-blue-200 bg-blue-50 px-4 py-2.5">
+                <p className="text-sm text-blue-700">ℹ️ {restoreNotice}</p>
+                <button onClick={() => setRestoreNotice("")} className="text-xs text-blue-500 hover:text-blue-700">Dismiss</button>
+              </div>
+            )}
             {error && (
               <p className="mb-4 rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
                 {error}
