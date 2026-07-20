@@ -175,13 +175,13 @@ export default function ArticleDetailPage({
               href="/library"
               className="rounded-sm border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:border-white/50 hover:text-white"
             >
-              ← Library
+              ← KB Library
             </Link>
             <Link
               href="/"
               className="rounded-sm border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:border-white/50 hover:text-white"
             >
-              Article Creator
+              New Article
             </Link>
           </div>
         </div>

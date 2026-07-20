@@ -122,7 +122,7 @@ export default function LibraryPage() {
             href="/"
             className="rounded-sm border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:border-white/50 hover:text-white"
           >
-            ← Article Creator
+            ← New Article
           </Link>
         </div>
       </header>
@@ -196,7 +196,7 @@ export default function LibraryPage() {
           <div className="overflow-hidden rounded-sm border border-[#E3DFEE] bg-white">
             {filtered.length === 0 ? (
               <div className="px-6 py-12 text-center text-sm text-[#1E1A2E]/40">
-                No articles found. Generate and save one from the Article Creator.
+                No articles found. Generate and save one from the Article Creator at http://localhost:3000.
               </div>
             ) : (
               <table className="w-full text-sm">
