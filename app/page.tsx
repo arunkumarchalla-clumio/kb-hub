@@ -124,8 +124,31 @@ useEffect(() => {
     }
   }, []);
 
+  // Detect ?new=1 — clear all state and storage for a fresh article.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      try {
+        sessionStorage.removeItem("kb-hub-draft-ticket");
+        sessionStorage.removeItem("kb-hub-draft-markdown");
+        localStorage.removeItem("kb-creator-draft-v2");
+      } catch {}
+      setFields(EMPTY_FIELDS);
+      setImages([]);
+      setMarkdown("");
+      setError("");
+      setRestoredDraft(false);
+      setStep(0);
+      makeUniqueTicketNumber().then(setTicket);
+      // Clean the URL without reloading
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
   // Restore generated article from sessionStorage when navigating back.
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") return; // skip restore if starting fresh
     try {
       const savedTicket   = sessionStorage.getItem("kb-hub-draft-ticket");
       const savedMarkdown = sessionStorage.getItem("kb-hub-draft-markdown");
@@ -268,12 +291,7 @@ useEffect(() => {
 
           <div className="flex items-center gap-4">
             
-            <a
-              href="/library"
-              className="hidden rounded-sm border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:border-white/50 hover:text-white sm:inline"
-            >
-              KB Library
-            </a>
+            
             <span className="hidden font-display text-sm font-semibold uppercase tracking-widest text-white/70 sm:inline">
               {PROJECT_TITLE}
             </span>
@@ -307,6 +325,19 @@ useEffect(() => {
             Turn ticket details into a polished, consistently-structured knowledge base
             article in minutes — built for backup, restore, and cloud infrastructure issues.
           </p>
+          <div className="mt-8">
+            
+            <a
+              href="/library"
+              className="inline-flex items-center gap-2 rounded-sm border border-[#2D1B4E]/20 bg-white/60 px-4 py-2 text-sm font-semibold text-[#2D1B4E] backdrop-blur-sm hover:bg-white/80 transition"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+              KB Library
+            </a>
+          </div>
         </div>
       </section>
 

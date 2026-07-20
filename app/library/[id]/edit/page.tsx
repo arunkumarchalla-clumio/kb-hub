@@ -208,7 +208,7 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
                 audience={fields.audience}
                 onMarkdownChange={setMarkdown}
                 onRegenerate={() => { setStep(0); }}
-                onNewArticle={() => router.push("/library")}
+                onNewArticle={() => { window.location.href = "/?new=1"; }}
                 onSave={handleRepublish}
                 publishLabel={`Republish as v${currentVersion + 1}`}
               />
