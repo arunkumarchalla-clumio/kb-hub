@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-07-20T10:17:38.681Z",
+  "exported_at": "2026-07-20T10:48:11.286Z",
   "article_count": 8,
   "articles": [
     {
@@ -29,10 +29,10 @@
     },
     {
       "id": "KB-260715-9212",
-      "title": "RDS instance backup fails with STOPPED status",
-      "engineer_name": "Arun Kumar Challa",
-      "engineer_email": "achalla@commvault.com",
-      "audience": "Public",
+      "title": "RDS instance backup fails with STOPPED",
+      "engineer_name": "Thanusha Jakkula",
+      "engineer_email": "tjakkula@commvault.com",
+      "audience": "Internal",
       "issue_type": "Backup Failed",
       "entity_type": "RDS Instance",
       "category": "Backup Failure",
@@ -42,14 +42,14 @@
       "cause": "RDS instance might be in STOPPED state, created these alerts",
       "resolution": "Check if RDS instance is in STOPPED state in AWS portal\nIf RDS instance is in stopped state and backup no longer required for it, unprotect the instance.",
       "keywords": "EBS volume",
-      "markdown_content": "# RDS Instance Backup Fails with STOPPED Status\n\n**Summary:** A backup of an RDS instance fails because the instance is in a STOPPED state in AWS. To resolve this, check the instance status in the AWS console and, if backups are no longer needed, remove it from protection in Clumio.\n\n## Symptoms\n- A Clumio backup alert is triggered for an RDS instance.\n- The backup job shows a STOPPED status or fails to complete.\n- The affected RDS instance is in a stopped (powered-off) state in AWS.\n\n## Cause\n\nClumio attempts to back up the RDS instance on its scheduled backup window. If the RDS instance has been stopped in AWS — meaning it is powered off and not running — the backup cannot complete successfully. This causes Clumio to raise a backup failure alert for that instance.\n\n## Resolution\n\n1. Open the [AWS Management Console](https://console.aws.amazon.com/) and navigate to **RDS** using the search bar at the top.\n2. In the RDS console, find the instance named in the Clumio alert and check its **Status** column.\n3. Confirm whether the status shows **Stopped**.\n4. Decide whether you still need backups for this instance:\n   - **If you no longer need backups** for this stopped instance, open the Clumio console and remove the instance from protection (this is called \"unprotecting\" — it tells Clumio to stop trying to back up this resource).\n   - **If you do still need backups**, start the RDS instance in the AWS console by selecting it, clicking **Actions**, and choosing **Start**. Once the instance is running, the next scheduled backup should complete successfully.\n\n## Applies To\n- **Product/Version:** Clumio\n- **Audience:** Public (End Users)\n- **Issue Type:** Backup Failed\n- **Primary Entity Type:** RDS Instance\n\n## FAQ\n\n**Q: Will unprotecting the RDS instance in Clumio delete my existing backups?**\nUnprotecting an instance tells Clumio to stop taking new backups going forward. Check your Clumio retention settings or contact your administrator to understand how existing backup copies are affected.\n\n**Q: Why does AWS stop an RDS instance in the first place?**\nAWS automatically stops RDS instances after 7 consecutive days if they were manually stopped, returning them to a running state at that point. Outside of that, instances are typically stopped manually by a user or an automated script.\n\n**Q: How do I unprotect an RDS instance in Clumio?**\nLog in to the Clumio console, navigate to the list of protected RDS instances, locate the affected instance, and look for an **Unprotect** option. If you are unsure where to find this, contact your Clumio administrator or Clumio support for guidance.\n\n## References\nNo references.\n\n## Keywords\nRDS, RDS instance, backup failed, STOPPED status, STOPPED state, Clumio, backup failure, unprotect, AWS RDS, backup alert",
+      "markdown_content": "# RDS Instance Backup Fails Due to STOPPED Instance State\n\n**Summary:** Backups of an RDS instance fail when the instance is in a STOPPED state in AWS. Resolve by verifying the instance state in the AWS Console and unprotecting the instance if backup is no longer required.\n\n## Symptoms\n- RDS instance backup job fails with a `STOPPED` status.\n- Alerts are generated in Clumio for the affected RDS instance.\n\n## Cause\nThe RDS instance targeted for backup is in a STOPPED state in AWS. AWS does not allow certain backup operations against stopped RDS instances, causing Clumio to fail the backup job and raise an alert. An RDS instance can remain in a stopped state for up to 7 days before AWS automatically restarts it; if the instance is stopped during a scheduled backup window, the job will fail.\n\n## Resolution\n1. Navigate to the **AWS Console** > **RDS** > **Databases** and locate the affected RDS instance.\n2. Confirm the instance status is **Stopped**.\n3. If backups are still required for this instance, start the instance (**Actions** > **Start**) to allow future backup jobs to complete successfully.\n4. If backups are no longer required for this instance, log in to the **Clumio portal** and navigate to the protected assets list.\n5. Locate the stopped RDS instance and select **Unprotect** to remove it from the backup policy.\n\n## Applies To\n- **Product/Version:** Clumio\n- **Audience:** Internal\n- **Issue Type:** Backup Failed\n- **Primary Entity Type:** RDS Instance\n\n## References\nNo references.\n\n## Keywords\nRDS instance, backup failed, STOPPED state, Clumio, RDS stopped, unprotect, AWS RDS, backup alert",
       "use_aws_docs": 1,
       "created_at": "2026-07-15 18:10:01",
-      "updated_at": "2026-07-20 10:17:38",
-      "published_at": "2026-07-20T10:17:38.679Z",
+      "updated_at": "2026-07-20 10:48:11",
+      "published_at": "2026-07-20T10:48:11.285Z",
       "archived_at": null,
       "archived_by": "",
-      "current_version": 3,
+      "current_version": 6,
       "reference_links": []
     },
     {

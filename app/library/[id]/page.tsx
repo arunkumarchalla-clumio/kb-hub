@@ -263,6 +263,12 @@ export default function ArticleDetailPage({
                 ✏️ Edit &amp; Republish
               </button>
               <button
+                onClick={() => window.location.href = `/library/${article.id}/versions`}
+                className="w-full rounded-sm border border-[#E3DFEE] bg-white px-3 py-2 text-sm text-[#1E1A2E]/70 hover:bg-[#F7F6FB] transition"
+              >
+                🕐 Version History
+              </button>
+              <button
                 onClick={exportDocx}
                 disabled={exportingDocx}
                 className="w-full rounded-sm border border-[#E3DFEE] bg-white px-3 py-2 text-sm text-[#1E1A2E]/70 hover:bg-[#F7F6FB] disabled:opacity-50"
