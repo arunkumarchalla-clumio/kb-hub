@@ -258,16 +258,17 @@ Keywords: ${fields.keywords || "(not provided)"}${referenceInstructions(links)}$
   if (!text) throw new Error("No text content returned from Claude");
 
   // Strip any MCP tool call XML that leaked into the text response.
-  // These appear as <function_calls>...</function_calls> blocks when Claude
-  // narrates its tool use inline rather than using structured tool blocks.
+  // Claude sometimes narrates tool use inline rather than using structured blocks.
   const cleaned = text
-    // Remove full <function_calls> blocks (including multiline)
+    // Remove full <function_calls>...</function_calls> blocks (multiline)
     .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, "")
-    // Remove any standalone <invoke> / </invoke> remnants
+    // Remove any remaining opening or closing XML tags from tool calls
+    .replace(/<\/?function_calls>/g, "")
     .replace(/<\/?invoke[^>]*>/g, "")
     .replace(/<\/?parameter[^>]*>/g, "")
-    // Remove preamble lines like "I'll look up..." before the article starts
-    .replace(/^[^\n#*]*?(?:look up|check|search|fetch|retrieve|consult)[^\n]*\n+/gim, "")
+    .replace(/<\/?antml:[^>]*>/g, "")
+    // Remove preamble lines before the article title (lines before the first # heading)
+    .replace(/^[\s\S]*?(?=^#\s)/m, "")
     // Collapse 3+ blank lines into 2
     .replace(/\n{3,}/g, "\n\n")
     .trim();
