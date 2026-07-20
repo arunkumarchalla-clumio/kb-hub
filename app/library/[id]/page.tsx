@@ -23,6 +23,8 @@ interface Article {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  current_version: number;
+  last_modified_by?: string;
 }
 
 function fmt(dateStr: string | null) {
@@ -201,10 +203,11 @@ export default function ArticleDetailPage({
                   ["ID",          article.id],
                   ["Status",      article.status],
                   ["Audience",    article.audience],
-                  ["Issue Type",  article.issue_type || "—"],
-                  ["Entity Type", article.entity_type || "—"],
-                  ["Category",    article.category || "—"],
-                  ["Version",     article.product_version || "—"],
+                  ["Issue Type",      article.issue_type  || "—"],
+                  ["Entity Type",     article.entity_type || "—"],
+                  ["Category",        article.category    || "—"],
+                  ["Product Name",    article.product_version || "—"],
+                  ["Article Version", `v${article.current_version ?? 1}`],
                 ].map(([label, value]) => (
                   <div key={label} className="border-b border-[#E3DFEE] py-2 last:border-0">
                     <div className="font-mono text-[9px] uppercase tracking-widest text-[#1E1A2E]/40">{label}</div>
@@ -219,6 +222,12 @@ export default function ArticleDetailPage({
                 </h2>
                 <p className="text-sm font-medium text-[#1E1A2E]">{article.engineer_name || "—"}</p>
                 <p className="text-xs text-[#1E1A2E]/50">{article.engineer_email || ""}</p>
+                {article.last_modified_by && article.last_modified_by !== article.engineer_name && (
+                  <div className="mt-2 border-t border-[#E3DFEE] pt-2">
+                    <div className="font-mono text-[9px] uppercase tracking-widest text-[#1E1A2E]/40">Last Modified By</div>
+                    <div className="mt-0.5 text-sm text-[#1E1A2E]/70">{article.last_modified_by}</div>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-sm border border-[#E3DFEE] bg-white p-4">
@@ -246,6 +255,12 @@ export default function ArticleDetailPage({
                 }`}
               >
                 {copied ? "Copied!" : "Copy MD"}
+              </button>
+              <button
+                onClick={() => window.location.href = `/library/${article.id}/edit`}
+                className="w-full rounded-sm border border-[#7B3F87]/40 bg-[#7B3F87]/5 px-3 py-2 text-sm text-[#4B2170] hover:bg-[#7B3F87]/10 transition font-semibold"
+              >
+                ✏️ Edit &amp; Republish
               </button>
               <button
                 onClick={exportDocx}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getArticleById, importFromJsonIfEmpty } from "@/lib/db";
+import { getArticleById, getVersions, importFromJsonIfEmpty } from "@/lib/db";
 
 export async function GET(
   _req: NextRequest,
@@ -14,7 +14,18 @@ export async function GET(
         { status: 404 }
       );
     }
-    return NextResponse.json({ article });
+
+    // Get the latest revision to find who last modified the article
+    const versions = getVersions(params.id);
+    const latestRevision = versions.length > 0 ? versions[versions.length - 1] : null;
+    const last_modified_by = latestRevision?.changed_by || article.engineer_name;
+
+    return NextResponse.json({
+      article: {
+        ...article,
+        last_modified_by,
+      }
+    });
   } catch (err) {
     console.error("[kb-hub] get-article error:", err);
     return NextResponse.json(

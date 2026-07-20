@@ -13,6 +13,7 @@ interface Article {
   status: string;
   created_at: string;
   updated_at: string;
+  current_version: number;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -207,6 +208,7 @@ export default function LibraryPage() {
                     <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Audience</th>
                     <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Type</th>
                     <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Status</th>
+                    <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Version</th>
                     <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Created</th>
                     <th className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Updated</th>
                     <th className="px-4 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-[#1E1A2E]/50">Archive</th>
@@ -232,6 +234,15 @@ export default function LibraryPage() {
                       <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide ${STATUS_STYLES[a.status] || "bg-gray-100 text-gray-600"}`}>
                           {a.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>
+                        <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
+                          (a.current_version ?? 1) > 1
+                            ? "bg-[#7B3F87]/10 text-[#4B2170]"
+                            : "bg-gray-100 text-gray-500"
+                        }`}>
+                          v{a.current_version ?? 1}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{fmt(a.created_at)}</td>

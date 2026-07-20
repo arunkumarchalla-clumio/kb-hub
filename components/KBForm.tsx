@@ -25,6 +25,7 @@ interface Props {
   error: string;
   step: number;
   onStepChange: (step: number) => void;
+  submitLabel?: string;
 }
 
 const STEPS = ["Basics", "Symptoms & Cause", "Resolution", "Review"] as const;
@@ -774,6 +775,7 @@ export default function KBForm({
   error,
   step,
   onStepChange,
+  submitLabel,
 }: Props) {
   // step is now controlled by the parent (page.tsx) so the refresh icon in
   // KBPreview can reset it to 0 without needing a ref or callback chain.
@@ -1182,7 +1184,7 @@ export default function KBForm({
                 ? fields.useAwsDocs
                   ? "Generating (checking AWS docs)…"
                   : "Generating…"
-                : "Generate KB Article"}
+                : submitLabel || "Generate KB Article"}
             </button>
           )}
         </div>
