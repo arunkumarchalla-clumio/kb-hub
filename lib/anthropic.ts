@@ -110,12 +110,14 @@ Place each token on its own line in the section it belongs to, at the point wher
 // Tells Claude diagram images/PDFs are attached for analysis, not embedding.
 function diagramInstruction(diagrams: DiagramImage[]): string {
   const count = diagrams.length;
+  const hasText = diagrams.some((d) => d.mediaType === "text/plain" || d.mediaType === "text/rtf" || d.mediaType === "application/rtf");
   const hasPdf = diagrams.some((d) => d.mediaType === "application/pdf");
-  const hasImg = diagrams.some((d) => d.mediaType !== "application/pdf");
+  const hasImg = diagrams.some((d) => !["text/plain","text/rtf","application/rtf","application/pdf"].includes(d.mediaType));
 
   const fileDesc = [
     hasPdf && "PDF document(s) (which may contain multiple pages)",
     hasImg && "screenshot/diagram image(s)",
+    hasText && "text file(s)",
   ].filter(Boolean).join(" and ");
 
   return `${count} analysis ${count === 1 ? "file has" : "files have"} been attached (${fileDesc}) — shown as the first ${count === 1 ? "item" : `${count} items`} below. These are NOT content to embed in the article — they are context for you to analyze. Study ${count === 1 ? "it" : "all of them"} carefully: identify the services, components, data flow, failure points, error states, or any relevant technical detail ${count === 1 ? "it shows" : "they show"}. For multi-page PDFs, read all pages. Use what you observe to enrich the Symptoms, Cause, and Resolution sections. Do not reference "the image", "the PDF", or "the attached files" explicitly in the article text; just incorporate the technical understanding they give you.
@@ -170,20 +172,34 @@ Keywords: ${fields.keywords || "(not provided)"}${referenceInstructions(links)}$
   ];
 
   // Diagram files come first — they're the "big picture" context.
-  // PDFs are rasterized to JPEG images client-side before reaching here,
-  // so all diagram entries arrive as image blocks.
+  // Text files (.txt, .rtf) are decoded and sent as plain text blocks.
+  // Images (including PDF pages rasterized client-side) are sent as image blocks.
   for (const diagram of diagrams) {
+    const isTextFile = diagram.mediaType === "text/plain" ||
+                       diagram.mediaType === "text/rtf" ||
+                       diagram.mediaType === "application/rtf";
+
     const base64 = diagram.dataUri.includes(",")
       ? diagram.dataUri.slice(diagram.dataUri.indexOf(",") + 1)
       : diagram.dataUri;
-    content.push({
-      type: "image",
-      source: {
-        type: "base64",
-        media_type: diagram.mediaType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
-        data: base64,
-      },
-    });
+
+    if (isTextFile) {
+      // Decode base64 text and inject as a plain text block
+      const decoded = Buffer.from(base64, "base64").toString("utf-8");
+      content.push({
+        type: "text",
+        text: `\n\n--- Attached file: ${diagram.filename} ---\n${decoded}\n--- End of file ---\n`,
+      });
+    } else {
+      content.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: diagram.mediaType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+          data: base64,
+        },
+      });
+    }
   }
 
   // Illustrative screenshots follow, in section order.
@@ -234,5 +250,22 @@ Keywords: ${fields.keywords || "(not provided)"}${referenceInstructions(links)}$
     .trim();
 
   if (!text) throw new Error("No text content returned from Claude");
-  return text;
+
+  // Strip any MCP tool call XML that leaked into the text response.
+  // These appear as <function_calls>...</function_calls> blocks when Claude
+  // narrates its tool use inline rather than using structured tool blocks.
+  const cleaned = text
+    // Remove full <function_calls> blocks (including multiline)
+    .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, "")
+    // Remove any standalone <invoke> / </invoke> remnants
+    .replace(/<\/?invoke[^>]*>/g, "")
+    .replace(/<\/?parameter[^>]*>/g, "")
+    // Remove preamble lines like "I'll look up..." before the article starts
+    .replace(/^[^\n#*]*?(?:look up|check|search|fetch|retrieve|consult)[^\n]*\n+/gim, "")
+    // Collapse 3+ blank lines into 2
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!cleaned) throw new Error("No article content after cleaning tool call output");
+  return cleaned;
 }
