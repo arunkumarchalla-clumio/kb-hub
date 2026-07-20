@@ -48,6 +48,12 @@ function baseStructure(audience: string, hasAwsDocs: boolean): string {
     ? `\n- When the Primary Entity Type, Product/Version, or Symptoms reference a specific AWS service, API, error code, or behavior, use the AWS documentation tools available to you to verify details before writing the Cause and Resolution sections. Prefer verified, current information over assumption.`
     : "";
 
+  const awsReferenceNote = hasAwsDocs
+    ? `\n\n## AWS Documentation Tool Usage
+- After using the AWS documentation tools, list every real AWS doc URL you consulted in the References section.
+- Do NOT include fabricated or placeholder URLs — only real URLs returned by the tool.`
+    : "";
+
   return `Always output ONLY Markdown, in exactly this structure and order, with no preamble or closing remarks:
 
 # {Title}
@@ -66,7 +72,7 @@ Short paragraph explaining the root cause.
 ## Applies To
 - Product/Version, Audience, Issue Type, and Primary Entity Type, as bullet points.
 
-${faqSection(audience)}${referencesSection(hasAwsDocs)}## Keywords
+${faqSection(audience)}${referencesSection(hasAwsDocs)}${awsReferenceNote}## Keywords
 Comma-separated keywords.
 
 Rules:
