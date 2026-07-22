@@ -170,7 +170,13 @@ export default function LibraryPage() {
           </select>
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value === "archived") {
+                window.location.href = "/library/archived";
+              } else {
+                setFilterStatus(e.target.value);
+              }
+            }}
             className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-2 text-sm text-[#1E1A2E]"
           >
             {statuses.map((s) => <option key={s}>{s}</option>)}
