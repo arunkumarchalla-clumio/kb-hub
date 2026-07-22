@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { saveArticle, importFromJsonIfEmpty } from "@/lib/db";
+import { saveArticle, importFromJsonIfEmpty, syncFromJson } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
-    importFromJsonIfEmpty();
+    syncFromJson();
 
     const body = await req.json();
     const { ticket, fields, markdown } = body;

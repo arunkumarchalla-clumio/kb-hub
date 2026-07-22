@@ -232,7 +232,7 @@ useEffect(() => {
       if (!res.ok) throw new Error(data.error || "Save failed");
       // Redirect to article detail page after publishing
       setTimeout(() => {
-        window.location.href = `/library/${ticket}`;
+        window.location.href = `/library/${ticket}?published=1`;
       }, 1500);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to save article.");

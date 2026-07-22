@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getArticleById, getVersions, importFromJsonIfEmpty } from "@/lib/db";
+import { getArticleById, getVersions, importFromJsonIfEmpty, syncFromJson } from "@/lib/db";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    importFromJsonIfEmpty();
+    syncFromJson();
     const article = getArticleById(params.id);
     if (!article) {
       return NextResponse.json(

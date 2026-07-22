@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getArchivedArticles } from "@/lib/db";
+import { getArchivedArticles, syncFromJson } from "@/lib/db";
 
 export async function GET() {
   try {

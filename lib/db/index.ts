@@ -356,6 +356,87 @@ export function exportToJson() {
   } catch { /* ignore if public/ not writable */ }
 }
 
+// Sync JSON into local SQLite — runs on every page load.
+// Merges new and updated articles from kb-articles.json into local DB.
+// Never overwrites local articles that are newer than the JSON version.
+// Safe to run repeatedly — uses updated_at to detect changes.
+export function syncFromJson() {
+  if (!fs.existsSync(JSON_PATH)) return;
+  const db = getDb();
+
+  try {
+    const data = JSON.parse(fs.readFileSync(JSON_PATH, "utf8"));
+
+    const upsertArticle = db.prepare(`
+      INSERT INTO kb_articles (
+        id, title, engineer_name, engineer_email,
+        audience, issue_type, entity_type, category, product_version,
+        status, symptoms, cause, resolution, keywords,
+        markdown_content, use_aws_docs, created_at, updated_at, published_at,
+        current_version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        engineer_name = excluded.engineer_name,
+        engineer_email = excluded.engineer_email,
+        audience = excluded.audience,
+        issue_type = excluded.issue_type,
+        entity_type = excluded.entity_type,
+        category = excluded.category,
+        product_version = excluded.product_version,
+        status = excluded.status,
+        symptoms = excluded.symptoms,
+        cause = excluded.cause,
+        resolution = excluded.resolution,
+        keywords = excluded.keywords,
+        markdown_content = excluded.markdown_content,
+        use_aws_docs = excluded.use_aws_docs,
+        updated_at = excluded.updated_at,
+        published_at = excluded.published_at,
+        current_version = excluded.current_version
+      WHERE excluded.updated_at > kb_articles.updated_at
+    `);
+
+    const upsertArchived = db.prepare(`
+      INSERT OR IGNORE INTO kb_archived_articles (
+        id, title, engineer_name, engineer_email,
+        audience, issue_type, entity_type, category, product_version,
+        status, symptoms, cause, resolution, keywords,
+        markdown_content, use_aws_docs, created_at, updated_at, published_at,
+        archived_at, archived_by, current_version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const syncAll = db.transaction(() => {
+      let synced = 0;
+      for (const a of (data.articles || [])) {
+        upsertArticle.run(
+          a.id, a.title, a.engineer_name, a.engineer_email,
+          a.audience, a.issue_type, a.entity_type, a.category, a.product_version,
+          a.status, a.symptoms, a.cause, a.resolution, a.keywords,
+          a.markdown_content, a.use_aws_docs, a.created_at, a.updated_at, a.published_at,
+          a.current_version ?? 1
+        );
+        synced++;
+      }
+      for (const a of (data.archived_articles || [])) {
+        upsertArchived.run(
+          a.id, a.title, a.engineer_name, a.engineer_email,
+          a.audience, a.issue_type, a.entity_type, a.category, a.product_version,
+          a.status, a.symptoms, a.cause, a.resolution, a.keywords,
+          a.markdown_content, a.use_aws_docs, a.created_at, a.updated_at, a.published_at,
+          a.archived_at, a.archived_by, a.current_version ?? 1
+        );
+      }
+      return synced;
+    });
+
+    syncAll();
+  } catch (e) {
+    console.error("[kb-hub] syncFromJson error:", e);
+  }
+}
+
 // Import JSON into local SQLite — runs on startup if db is empty but JSON exists.
 export function importFromJsonIfEmpty() {
   const db = getDb();

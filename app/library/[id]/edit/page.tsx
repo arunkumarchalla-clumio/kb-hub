@@ -136,7 +136,7 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Republish failed.");
       setPublished(true);
-      setTimeout(() => { window.location.href = `/library/${params.id}`; }, 1500);
+      setTimeout(() => { window.location.href = `/library/${params.id}?published=1`; }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Republish failed.");
     } finally {

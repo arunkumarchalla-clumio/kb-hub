@@ -50,6 +50,16 @@ export default function ArticleDetailPage({
   const [copied,        setCopied]        = useState(false);
   const [exportingDocx, setExportingDocx] = useState(false);
   const [versionCount,  setVersionCount]  = useState(1);
+  const [showGitReminder, setShowGitReminder] = useState(false);
+
+  // Show git push reminder if redirected from publish/republish
+  useEffect(() => {
+    const params_url = new URLSearchParams(window.location.search);
+    if (params_url.get("published") === "1") {
+      setShowGitReminder(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     fetch(`/api/library/article/${params.id}`)
@@ -188,6 +198,25 @@ export default function ArticleDetailPage({
       </header>
 
       <div className="mx-auto max-w-7xl px-6 py-8">
+        {showGitReminder && (
+          <div className="mb-4 flex items-center justify-between rounded-sm border border-[#7B3F87]/30 bg-[#7B3F87]/5 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-[#4B2170]">✓ Article published successfully</p>
+              <p className="mt-0.5 text-xs text-[#1E1A2E]/60">
+                Run the commands below to share with your team:
+              </p>
+              <code className="mt-1 block rounded bg-[#1E1A2E] px-3 py-1.5 text-xs text-green-400">
+                cd ~/Downloads/kb-hub && git add kb-articles.json && git commit -m "Add KB article" && git push
+              </code>
+            </div>
+            <button
+              onClick={() => setShowGitReminder(false)}
+              className="ml-4 shrink-0 text-xs text-[#1E1A2E]/40 hover:text-[#1E1A2E]"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {loading && <p className="text-sm text-[#1E1A2E]/50">Loading...</p>}
         {error   && <p className="text-sm text-red-600">{error}</p>}
 

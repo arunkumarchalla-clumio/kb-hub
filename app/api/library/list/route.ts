@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getAllArticles, importFromJsonIfEmpty, moveExpiredArchives } from "@/lib/db";
+import { getAllArticles, importFromJsonIfEmpty, moveExpiredArchives, syncFromJson } from "@/lib/db";
 
 export async function GET() {
   try {
-    importFromJsonIfEmpty();
-    moveExpiredArchives();
+    syncFromJson();
+    
     const articles = getAllArticles();
     return NextResponse.json({ articles });
   } catch (err) {
