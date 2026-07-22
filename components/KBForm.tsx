@@ -1,4 +1,5 @@
 "use client";
+import SimilarArticles from "@/components/SimilarArticles";
 
 import { useRef, useState } from "react";
 import { analyzeKeywords, parseKeywordList, type KeywordStrength } from "@/lib/keywordCheck";
@@ -1187,6 +1188,18 @@ export default function KBForm({
                 : submitLabel || "Generate KB Article"}
             </button>
           )}
+
+          {/* Similar articles — shown on all steps below Generate button */}
+          <SimilarArticles
+            fields={{
+              title:      fields.title,
+              issueType:  fields.issueType,
+              entityType: fields.primaryEntityType,
+              keywords:   fields.keywords,
+              symptoms:   fields.symptoms,
+              audience:   fields.audience,
+            }}
+          />
         </div>
       </form>
     </section>
