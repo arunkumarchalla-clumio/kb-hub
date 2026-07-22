@@ -128,14 +128,11 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
     setPublishing(true);
     setError("");
     try {
-      const payload = { fields, markdown };
-      console.log("[REPUBLISH DEBUG] id:", params.id, "markdown length:", markdown.length, "title:", fields.title);
       const res = await fetch(`/api/library/republish/${params.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ fields, markdown }),
       });
-      console.log("[REPUBLISH DEBUG] response status:", res.status);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Republish failed.");
       setPublished(true);
