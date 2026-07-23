@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No article content to export." }, { status: 400 });
     }
 
-    const buffer = await buildKBDocx(markdown, images);
+    const buffer = await buildKBDocx(markdown, images, filename);
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,

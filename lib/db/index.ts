@@ -142,87 +142,22 @@ export interface ReferenceLink {
 
 export function saveArticle(article: Omit<ArticleRecord, "created_at" | "updated_at">) {
   const db = getDb();
-
   const existing = db
     .prepare("SELECT id FROM kb_articles WHERE id = ?")
     .get(article.id);
 
-  if (existing) {
-    // Save a revision snapshot before updating
-    // Get the next version number for this article
-const lastVersion = db
-  .prepare("SELECT MAX(version_number) as maxv FROM kb_revisions WHERE article_id = ?")
-  .get(article.id) as { maxv: number | null };
-const nextVersion = (lastVersion?.maxv ?? 0) + 1;
+  const isPublishing = article.status === "published";
+  let versionToSet = 1;
 
-db.prepare(`
-  INSERT INTO kb_revisions (
-    id, article_id, version_number,
-    title, engineer_name, engineer_email,
-    audience, issue_type, entity_type, category, product_version,
-    symptoms, cause, resolution, keywords,
-    markdown_content, use_aws_docs,
-    changed_by, change_note, published_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-`).run(
-  crypto.randomUUID(),
-  article.id,
-  nextVersion,
-  article.title,
-  article.engineer_name,
-  article.engineer_email,
-  article.audience,
-  article.issue_type,
-  article.entity_type,
-  article.category,
-  article.product_version,
-  article.symptoms,
-  article.cause,
-  article.resolution,
-  article.keywords,
-  article.markdown_content,
-  article.use_aws_docs,
-  article.engineer_name,
-  nextVersion === 1 ? "Initial publish" : `Updated to v${nextVersion}`
-);
+  // Only create a revision snapshot when the article is being published.
+  // Drafts never touch kb_revisions — so saving/re-saving a draft, then
+  // publishing it for the first time, correctly lands on v1 (not v2).
+  if (isPublishing) {
+    const lastVersion = db
+      .prepare("SELECT MAX(version_number) as maxv FROM kb_revisions WHERE article_id = ?")
+      .get(article.id) as { maxv: number | null };
+    versionToSet = (lastVersion?.maxv ?? 0) + 1;
 
-    // Reuse nextVersion — already calculated correctly before revision insert
-    db.prepare(`
-  UPDATE kb_articles SET
-    title = ?, engineer_name = ?, engineer_email = ?,
-    audience = ?, issue_type = ?, entity_type = ?,
-    category = ?, product_version = ?, status = ?,
-    symptoms = ?, cause = ?, resolution = ?,
-    keywords = ?, markdown_content = ?, use_aws_docs = ?,
-    updated_at = datetime('now'), published_at = ?,
-    current_version = ?
-  WHERE id = ?
-`).run(
-  article.title, article.engineer_name, article.engineer_email,
-  article.audience, article.issue_type, article.entity_type,
-  article.category, article.product_version, article.status,
-  article.symptoms, article.cause, article.resolution,
-  article.keywords, article.markdown_content, article.use_aws_docs,
-  article.published_at, nextVersion, article.id
-);
-  } else {
-    db.prepare(`
-      INSERT INTO kb_articles (
-        id, title, engineer_name, engineer_email,
-        audience, issue_type, entity_type, category, product_version,
-        status, symptoms, cause, resolution, keywords,
-        markdown_content, use_aws_docs, published_at, current_version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-    `).run(
-      article.id, article.title, article.engineer_name, article.engineer_email,
-      article.audience, article.issue_type, article.entity_type,
-      article.category, article.product_version, article.status,
-      article.symptoms, article.cause, article.resolution,
-      article.keywords, article.markdown_content, article.use_aws_docs,
-      article.published_at
-    );
-
-    // Create initial v1 revision so first republish correctly becomes v2
     db.prepare(`
       INSERT INTO kb_revisions (
         id, article_id, version_number,
@@ -231,10 +166,11 @@ db.prepare(`
         symptoms, cause, resolution, keywords,
         markdown_content, use_aws_docs,
         changed_by, change_note, published_at
-      ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).run(
       crypto.randomUUID(),
       article.id,
+      versionToSet,
       article.title,
       article.engineer_name,
       article.engineer_email,
@@ -250,7 +186,44 @@ db.prepare(`
       article.markdown_content,
       article.use_aws_docs,
       article.engineer_name,
-      "Initial publish"
+      versionToSet === 1 ? "Initial publish" : `Updated to v${versionToSet}`
+    );
+  }
+
+  if (existing) {
+    db.prepare(`
+      UPDATE kb_articles SET
+        title = ?, engineer_name = ?, engineer_email = ?,
+        audience = ?, issue_type = ?, entity_type = ?,
+        category = ?, product_version = ?, status = ?,
+        symptoms = ?, cause = ?, resolution = ?,
+        keywords = ?, markdown_content = ?, use_aws_docs = ?,
+        updated_at = datetime('now'), published_at = ?,
+        current_version = ?
+      WHERE id = ?
+    `).run(
+      article.title, article.engineer_name, article.engineer_email,
+      article.audience, article.issue_type, article.entity_type,
+      article.category, article.product_version, article.status,
+      article.symptoms, article.cause, article.resolution,
+      article.keywords, article.markdown_content, article.use_aws_docs,
+      article.published_at, versionToSet, article.id
+    );
+  } else {
+    db.prepare(`
+      INSERT INTO kb_articles (
+        id, title, engineer_name, engineer_email,
+        audience, issue_type, entity_type, category, product_version,
+        status, symptoms, cause, resolution, keywords,
+        markdown_content, use_aws_docs, published_at, current_version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      article.id, article.title, article.engineer_name, article.engineer_email,
+      article.audience, article.issue_type, article.entity_type,
+      article.category, article.product_version, article.status,
+      article.symptoms, article.cause, article.resolution,
+      article.keywords, article.markdown_content, article.use_aws_docs,
+      article.published_at, versionToSet
     );
   }
 

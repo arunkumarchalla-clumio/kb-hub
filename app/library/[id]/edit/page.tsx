@@ -161,6 +161,30 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
     }
   }
 
+  // For drafts: publish for the first time — uses /save (not /republish),
+  // since a draft was never through the version/revision flow.
+  async function handlePublishDraft() {
+    const res = await fetch("/api/library/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticket: params.id, fields, markdown, status: "published" }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Publish failed.");
+    setTimeout(() => { window.location.href = `/library/${params.id}?published=1`; }, 1500);
+  }
+
+  // For drafts: re-save as draft with updated content.
+  async function handleSaveDraftAgain() {
+    const res = await fetch("/api/library/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticket: params.id, fields, markdown, status: "draft" }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Save failed.");
+  }
+
   return (
     <main className="flex min-h-screen flex-col bg-[#F7F6FB]">
       {/* Header */}
@@ -217,10 +241,12 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
             </div>
             {/* Nav buttons */}
             <div className="mb-6 flex items-center gap-3">
-              <Link href={`/library/${params.id}`}
-                className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-1.5 text-sm text-[#1E1A2E]/70 hover:border-[#7B3F87]/40 hover:text-[#1E1A2E]">
-                ← Back to Article
-              </Link>
+              {articleStatus !== "draft" && (
+                <Link href={`/library/${params.id}`}
+                  className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-1.5 text-sm text-[#1E1A2E]/70 hover:border-[#7B3F87]/40 hover:text-[#1E1A2E]">
+                  ← Back to Article
+                </Link>
+              )}
               <Link href="/library"
                 className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-1.5 text-sm text-[#1E1A2E]/70 hover:border-[#7B3F87]/40 hover:text-[#1E1A2E]">
                 KB Library
@@ -272,8 +298,9 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
                 onMarkdownChange={setMarkdown}
                 onRegenerate={() => { setStep(0); }}
                 onNewArticle={() => { window.location.href = "/?new=1"; }}
-                onSave={handleRepublish}
-                publishLabel={`Republish as v${currentVersion + 1}`}
+                onSave={articleStatus === "draft" ? handlePublishDraft : handleRepublish}
+                onSaveDraft={articleStatus === "draft" ? handleSaveDraftAgain : undefined}
+                publishLabel={articleStatus === "draft" ? "Publish" : `Republish as v${currentVersion + 1}`}
               />
             </div>
           </>

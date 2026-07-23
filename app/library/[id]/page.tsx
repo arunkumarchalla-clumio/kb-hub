@@ -80,6 +80,7 @@ export default function ArticleDetailPage({
       window.history.replaceState({}, "", window.location.pathname);
       setTimeout(() => exportPdf(), 300);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article]);
 
   function copy() {
@@ -326,7 +327,7 @@ export default function ArticleDetailPage({
 
             {/* Main — article content */}
             <div className="rounded-sm border border-[#E3DFEE] bg-white p-8">
-              <article className="prose prose-sm max-w-none
+              <article id="kb-article-content" className="prose prose-sm max-w-none
                 prose-headings:font-bold
                 prose-h1:text-xl prose-h1:text-[#1E1A2E]
                 prose-h2:text-sm prose-h2:uppercase prose-h2:tracking-widest

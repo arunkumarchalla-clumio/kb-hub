@@ -3,7 +3,7 @@
 
 export const COMPANY = "Commvault";
 export const PRODUCT = "Clumio";
-export const PROJECT_TITLE = "KB-Creator";
+export const PROJECT_TITLE = "Clumio Atlas";
 
 export const FOOTER_LINKS: string[] = [
   "Legal",

@@ -308,13 +308,15 @@ export default function LibraryPage() {
                         })()}
                       </td>
                       <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = rowHref(a)}>
-                        <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
-                          (a.current_version ?? 1) > 1
-                            ? "bg-[#7B3F87]/10 text-[#4B2170]"
-                            : "bg-gray-100 text-gray-500"
-                        }`}>
-                          v{a.current_version ?? 1}
-                        </span>
+                        {a.status !== "draft" && (
+                          <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
+                            (a.current_version ?? 1) > 1
+                              ? "bg-[#7B3F87]/10 text-[#4B2170]"
+                              : "bg-gray-100 text-gray-500"
+                          }`}>
+                            v{a.current_version ?? 1}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = rowHref(a)}>{fmt(a.created_at)}</td>
                       <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = rowHref(a)}>{fmt(a.updated_at)}</td>

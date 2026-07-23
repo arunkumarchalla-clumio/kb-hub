@@ -164,7 +164,7 @@ export function markdownToDocxParagraphs(
 }
 
 // Branded Word header: Commvault logo + "Commvault | Clumio" + project title.
-function buildDocxHeader(): Header {
+function buildDocxHeader(ticket?: string): Header {
   // Decode the logo PNG from the base64 data URI
   const logoBase64 = LOGO_PNG_DATA_URI.replace(/^data:image\/png;base64,/, "");
   const logoBuffer = Buffer.from(logoBase64, "base64");
@@ -183,7 +183,7 @@ function buildDocxHeader(): Header {
           new TextRun({ text: COMPANY, bold: true, size: 22 }),
           new TextRun({ text: "  |  ", size: 22, color: "999999" }),
           new TextRun({ text: PRODUCT, bold: true, size: 22, color: "6C3FA6" }),
-          new TextRun({ text: `\t${PROJECT_TITLE}`, size: 18, color: "888888" }),
+          new TextRun({ text: `\t${ticket || PROJECT_TITLE}`, size: 18, color: "888888" }),
         ],
       }),
     ],
@@ -224,7 +224,7 @@ function buildDocxFooter(): Footer {
   });
 }
 
-export async function buildKBDocx(markdown: string, images: KBImage[] = []): Promise<Buffer> {
+export async function buildKBDocx(markdown: string, images: KBImage[] = [], ticket?: string): Promise<Buffer> {
   // Strip any inline tokens that weren't on their own line so they don't
   // appear as literal text; on-their-own-line tokens are handled as images.
   void IMAGE_TOKEN_REGEX; // (regex reused conceptually; parsing done line-by-line)
@@ -243,7 +243,7 @@ export async function buildKBDocx(markdown: string, images: KBImage[] = []): Pro
     },
     sections: [
       {
-        headers: { default: buildDocxHeader() },
+        headers: { default: buildDocxHeader(ticket) },
         footers: { default: buildDocxFooter() },
         children: bodyParagraphs,
       },
