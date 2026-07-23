@@ -257,7 +257,7 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
       {/* Footer */}
       <footer className="mt-16 bg-black px-6 py-6 text-xs text-white/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <span>© {new Date().getFullYear()} Commvault · KB Hub</span>
+          <span>© {new Date().getFullYear()} Commvault · Clumio Atlas</span>
           <span>Internal use only</span>
         </div>
       </footer>
