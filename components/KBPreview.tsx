@@ -6,8 +6,6 @@ import {
   COMPANY,
   COPYRIGHT,
   FOOTER_LINKS,
-  LOGO_SVG_INNER,
-  LOGO_SVG_INNER_WHITE,
   PRODUCT,
   PROJECT_TITLE,
   SOCIAL_LINKS,
@@ -221,9 +219,6 @@ export default function KBPreview({
     }
     const bodyHtml = document.getElementById("kb-article-content")?.innerHTML || "";
 
-    // White-stroke logo SVG (for dark/black header/footer banners)
-    const logoWhiteSvg = `<svg width="28" height="28" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;">${LOGO_SVG_INNER_WHITE}</svg>`;
-
     const socialHtml = SOCIAL_LINKS.map(
       (s) =>
         `<a href="${s.url}" style="color:#aaa;text-decoration:none;font-size:11px;">${s.name}</a>`
@@ -386,8 +381,7 @@ export default function KBPreview({
     <!-- Fixed header (on every page) -->
     <div class="kb-header">
       <div class="kb-header-brand">
-        ${logoWhiteSvg}
-        <span class="kb-header-company">${COMPANY}</span>
+        <img src="/commvault-wordmark-white.svg" alt="${COMPANY}" style="height:22px;width:auto;display:inline-block;vertical-align:middle;" />
         <span class="kb-header-sep"></span>
         <span class="kb-header-product">${PRODUCT}</span>
       </div>

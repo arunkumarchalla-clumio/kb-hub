@@ -164,40 +164,38 @@ export default function ArticleDetailPage({
       <header className="bg-black px-6 py-4 text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <svg width="26" height="26" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <path d="M50,5 L89,27.5 L89,72.5 L50,95 L11,72.5 L11,27.5 Z"
-                fill="none" stroke="white" strokeWidth="5.5" strokeLinejoin="round"/>
-              <polygon points="50,30.1 67.8,39.7 50,49.3 32.2,39.7"
-                fill="none" stroke="white" strokeWidth="3.5" strokeLinejoin="round"/>
-              <polygon points="32.2,39.7 32.2,64.4 50,74 50,49.3"
-                fill="none" stroke="white" strokeWidth="3.5" strokeLinejoin="round"/>
-              <polygon points="67.8,39.7 67.8,64.4 50,74 50,49.3"
-                fill="none" stroke="white" strokeWidth="3.5" strokeLinejoin="round"/>
-            </svg>
-            <span className="font-bold text-lg tracking-tight">Commvault</span>
-            <span className="text-white/30">|</span>
-            <span className="font-semibold text-[#B78BE0]">Clumio</span>
-            <span className="text-white/30">|</span>
-            <span className="font-semibold text-white/70">KB Hub</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/commvault-wordmark-white.svg" alt="Commvault" className="h-6 w-auto" />
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/library"
-              className="rounded-sm border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:border-white/50 hover:text-white"
-            >
-              ← KB Library
-            </Link>
-            <button
-              onClick={() => { window.location.href = "/?new=1"; }}
-              className="rounded-sm border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:border-white/50 hover:text-white"
-            >
-              New Article
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display text-base font-semibold tracking-tight text-white">
+                Clumio
+              </span>
+              <span className="font-display text-base font-semibold tracking-tight text-[#B78BE0]">
+                KB Atlas
+              </span>
+            </div>
           </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-7xl px-6 py-8">
+        {/* Nav buttons */}
+        <div className="mb-4 flex items-center gap-3">
+          <Link
+            href="/library"
+            className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-1.5 text-sm text-[#1E1A2E]/70 hover:border-[#7B3F87]/40 hover:text-[#1E1A2E]"
+          >
+            ← KB Library
+          </Link>
+          <button
+            onClick={() => { window.location.href = "/?new=1"; }}
+            className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-1.5 text-sm text-[#1E1A2E]/70 hover:border-[#7B3F87]/40 hover:text-[#1E1A2E]"
+          >
+            New Article
+          </button>
+        </div>
         {showGitReminder && (
           <div className="mb-4 flex items-center justify-between rounded-sm border border-[#7B3F87]/30 bg-[#7B3F87]/5 px-4 py-3">
             <div>
@@ -206,7 +204,7 @@ export default function ArticleDetailPage({
                 Run the commands below to share with your team:
               </p>
               <code className="mt-1 block rounded bg-[#1E1A2E] px-3 py-1.5 text-xs text-green-400">
-                cd ~/Downloads/kb-hub && git add kb-articles.json && git commit -m "Add KB article" && git push
+                cd ~/Downloads/kb-hub && git add kb-articles.json && git commit -m &quot;Add KB article&quot; && git push
               </code>
             </div>
             <button

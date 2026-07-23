@@ -27,6 +27,7 @@ interface Props {
   step: number;
   onStepChange: (step: number) => void;
   submitLabel?: string;
+  ticket?: string;
 }
 
 const STEPS = ["Basics", "Symptoms & Cause", "Resolution", "Review"] as const;
@@ -777,6 +778,7 @@ export default function KBForm({
   step,
   onStepChange,
   submitLabel,
+  ticket,
 }: Props) {
   // step is now controlled by the parent (page.tsx) so the refresh icon in
   // KBPreview can reset it to 0 without needing a ref or callback chain.
@@ -827,9 +829,6 @@ export default function KBForm({
           Clear all
         </button>
       </div>
-      <p className="mt-1 text-sm text-ink/60">
-        Fill in what you know. Leave the rest blank — the article will say so plainly.
-      </p>
 
       {/* Progress bar */}
       <ol className="mt-5 flex items-center gap-2">
@@ -893,7 +892,14 @@ export default function KBForm({
                 />
               </Field>
             </div>
-
+            <Field label="KB Article Number">
+              <input
+                className={`${inputClass} cursor-not-allowed bg-ink/5 text-ink/50`}
+                value={ticket || "Generating…"}
+                readOnly
+                disabled
+              />
+            </Field>
             <Field label="Title" hint="required">
               <input
                 autoFocus
@@ -1001,6 +1007,9 @@ export default function KBForm({
               diagrams={fields.diagramImage}
               onChange={(d) => set("diagramImage", d)}
             />
+            <p className="text-sm text-ink/60">
+              Tip: Attach a screenshot or workflow diagram in Step 1 — Claude reads it before writing.
+            </p>
           </>
         )}
 
@@ -1188,19 +1197,18 @@ export default function KBForm({
                 : submitLabel || "Generate KB Article"}
             </button>
           )}
-
-          {/* Similar articles — shown on all steps below Generate button */}
-          <SimilarArticles
-            fields={{
-              title:      fields.title,
-              issueType:  fields.issueType,
-              entityType: fields.primaryEntityType,
-              keywords:   fields.keywords,
-              symptoms:   fields.symptoms,
-              audience:   fields.audience,
-            }}
-          />
         </div>
+        {/* Similar articles — shown on all steps below Generate button */}
+        <SimilarArticles
+          fields={{
+            title:      fields.title,
+            issueType:  fields.issueType,
+            entityType: fields.primaryEntityType,
+            keywords:   fields.keywords,
+            symptoms:   fields.symptoms,
+            audience:   fields.audience,
+          }}
+        />
       </form>
     </section>
   );
