@@ -72,6 +72,16 @@ export default function ArticleDetailPage({
       .catch(() => { setError("Failed to load article."); setLoading(false); });
   }, [params.id]);
 
+  // Auto-trigger PDF export if navigated here from a one-click download icon
+  useEffect(() => {
+    if (!article) return;
+    const params_url = new URLSearchParams(window.location.search);
+    if (params_url.get("autoexport") === "pdf") {
+      window.history.replaceState({}, "", window.location.pathname);
+      setTimeout(() => exportPdf(), 300);
+    }
+  }, [article]);
+
   function copy() {
     if (!article) return;
     navigator.clipboard.writeText(article.markdown_content).then(() => {
@@ -159,7 +169,7 @@ export default function ArticleDetailPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#F7F6FB]">
+    <main className="flex min-h-screen flex-col bg-[#F7F6FB]">
       {/* Header */}
       <header className="bg-black px-6 py-4 text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -180,7 +190,7 @@ export default function ArticleDetailPage({
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="flex-1 mx-auto w-full max-w-7xl px-6 py-8">
         {/* Nav buttons */}
         <div className="mb-4 flex items-center gap-3">
           <Link
@@ -331,7 +341,7 @@ export default function ArticleDetailPage({
       </div>
 
       {/* Footer */}
-      <footer className="mt-16 bg-black px-6 py-6 text-xs text-white/50">
+      <footer className="bg-black px-6 py-6 text-xs text-white/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <span>© {new Date().getFullYear()} Commvault · Clumio Atlas</span>
           <span>Internal use only</span>

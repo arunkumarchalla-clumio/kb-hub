@@ -40,6 +40,8 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
   const [step,          setStep]          = useState(0);
   const [currentVersion, setCurrentVersion] = useState(1);
   const [restoreNotice, setRestoreNotice] = useState("");
+  const [articleStatus, setArticleStatus] = useState("published");
+  const [discarding, setDiscarding] = useState(false);
 
   // Load the existing article and pre-fill all form fields
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
         if (d.error) { setError(d.error); setLoading(false); return; }
         const a = d.article;
         setCurrentVersion(a.current_version ?? 1);
+        setArticleStatus(a.status || "published");
         setMarkdown(a.markdown_content);
         setFields({
           title:              a.title || "",
@@ -144,8 +147,22 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
     }
   }
 
+  async function handleDiscard() {
+    if (!window.confirm("Discard this draft permanently? This cannot be undone.")) return;
+    setDiscarding(true);
+    try {
+      const res = await fetch(`/api/library/discard/${params.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Discard failed.");
+      router.push("/library");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to discard draft.");
+      setDiscarding(false);
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-[#F7F6FB]">
+    <main className="flex min-h-screen flex-col bg-[#F7F6FB]">
       {/* Header */}
       <header className="bg-black px-6 py-4 text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -186,7 +203,7 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+      <div className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
         {loading && <p className="text-sm text-[#1E1A2E]/50">Loading article...</p>}
         {error   && <p className="text-sm text-red-600">{error}</p>}
 
@@ -208,6 +225,15 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
                 className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-1.5 text-sm text-[#1E1A2E]/70 hover:border-[#7B3F87]/40 hover:text-[#1E1A2E]">
                 KB Library
               </Link>
+              {articleStatus === "draft" && (
+                <button
+                  onClick={handleDiscard}
+                  disabled={discarding}
+                  className="rounded-sm border border-red-200 bg-red-50 px-3 py-1.5 text-sm text-red-600 hover:bg-red-100 disabled:opacity-40"
+                >
+                  {discarding ? "Discarding…" : "Discard Draft"}
+                </button>
+              )}
             </div>
 
             {restoreNotice && (
@@ -255,7 +281,7 @@ export default function EditArticlePage({ params }: { params: { id: string } }) 
       </div>
 
       {/* Footer */}
-      <footer className="mt-16 bg-black px-6 py-6 text-xs text-white/50">
+      <footer className="bg-black px-6 py-6 text-xs text-white/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <span>© {new Date().getFullYear()} Commvault · Clumio Atlas</span>
           <span>Internal use only</span>

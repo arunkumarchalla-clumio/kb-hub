@@ -24,6 +24,7 @@ interface Props {
   onNewArticle: () => void;
   onSave: () => Promise<void>;
   publishLabel?: string;
+  onSaveDraft?: () => Promise<void>;
 }
 
 export default function KBPreview({
@@ -37,9 +38,12 @@ export default function KBPreview({
   onNewArticle,
   onSave,
   publishLabel,
+  onSaveDraft,
 }: Props) {
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [exportingDocx, setExportingDocx] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [savedDraft, setSavedDraft] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSaved]   = useState(false);
@@ -651,6 +655,26 @@ export default function KBPreview({
             >
               {copied ? "Copied!" : "Copy MD"}
             </button>
+            {onSaveDraft && (
+              <button
+                onClick={async () => {
+                  setSavingDraft(true);
+                  setSavedDraft(false);
+                  await onSaveDraft();
+                  setSavingDraft(false);
+                  setSavedDraft(true);
+                  setTimeout(() => setSavedDraft(false), 3000);
+                }}
+                disabled={savingDraft}
+                className={`rounded-sm border px-3 py-1.5 text-sm transition ${
+                  savedDraft
+                    ? "border-green-400 bg-green-50 text-green-700"
+                    : "border-line hover:bg-ink/5"
+                } disabled:opacity-50`}
+              >
+                {savingDraft ? "Saving…" : savedDraft ? "✓ Saved as Draft" : "Save as Draft"}
+              </button>
+            )}
             <button
               onClick={async () => {
                 setSaving(true);

@@ -48,6 +48,8 @@ export default function LibraryPage() {
   const [filterEng,    setFilterEng]    = useState("All");
   const [filterType,   setFilterType]   = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [pageSize,     setPageSize]     = useState<number | "All">(25);
+  const [exportingDocx, setExportingDocx] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/library/list")
@@ -56,6 +58,9 @@ export default function LibraryPage() {
       .catch(() => { setError("Failed to load articles."); setLoading(false); });
   }, []);
 
+  function rowHref(a: Article): string {
+    return a.status === "draft" ? `/library/${a.id}/edit` : `/library/${a.id}`;
+  }
   async function handleArchive(e: React.MouseEvent, id: string, engineerName: string) {
     e.stopPropagation();
     if (!window.confirm(`Archive article ${id}? It will be moved to the archive.`)) return;
@@ -72,6 +77,36 @@ export default function LibraryPage() {
       alert("Failed to archive article. Please try again.");
     } finally {
       setArchiving(null);
+    }
+  }
+  async function exportDocxFromRow(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    setExportingDocx(id);
+    try {
+      const articleRes = await fetch(`/api/library/article/${id}`);
+      const articleData = await articleRes.json();
+      if (articleData.error) throw new Error(articleData.error);
+      const res = await fetch("/api/export/docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          markdown: articleData.article.markdown_content,
+          images: [],
+          filename: id,
+        }),
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${id}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Could not generate Word document. Please try again.");
+    } finally {
+      setExportingDocx(null);
     }
   }
 
@@ -95,9 +130,10 @@ export default function LibraryPage() {
       (filterStatus === "All" || a.status        === filterStatus)
     );
   });
+  const visible = pageSize === "All" ? filtered : filtered.slice(0, pageSize);
 
   return (
-    <main className="min-h-screen bg-[#F7F6FB]">
+    <main className="flex min-h-screen flex-col bg-[#F7F6FB]">
       {/* Header */}
       <header className="bg-black px-6 py-4 text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -118,7 +154,7 @@ export default function LibraryPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="flex-1 mx-auto w-full max-w-7xl px-6 py-8">
         {/* Page title */}
         <div className="mb-6">
           <h1 className="font-bold text-2xl text-[#1E1A2E]">KB Article Library</h1>
@@ -136,14 +172,25 @@ export default function LibraryPage() {
           </div>
         </div>
 
-        {/* Nav buttons */}
-        <div className="mb-4 flex items-center gap-3">
+        {/* Nav buttons + counts */}
+        <div className="mb-4 flex flex-wrap items-center gap-4">
           <Link
-            href="/"
-            className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-1.5 text-sm text-[#1E1A2E]/70 hover:border-[#7B3F87]/40 hover:text-[#1E1A2E]"
+            href="/?new=1"
+            className="inline-flex items-center gap-1.5 rounded-sm border border-[#E3DFEE] bg-white px-3 py-1.5 text-sm text-[#1E1A2E]/70 hover:border-[#7B3F87]/40 hover:text-[#1E1A2E]"
           >
-            ← New Article
+            New Article
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/>
+              <path d="M21 3v5h-5"/>
+            </svg>
           </Link>
+          <div className="flex items-center gap-3 text-xs text-[#1E1A2E]/50">
+            <span>Total: <strong className="text-[#1E1A2E]/80">{articles.length}</strong></span>
+            <span className="text-[#1E1A2E]/20">·</span>
+            <span>Published: <strong className="text-[#1E1A2E]/80">{articles.filter((a) => a.status === "published").length}</strong></span>
+            <span className="text-[#1E1A2E]/20">·</span>
+            <span>Draft: <strong className="text-[#1E1A2E]/80">{articles.filter((a) => a.status === "draft").length}</strong></span>
+          </div>
         </div>
         {/* Filters */}
         <div className="mb-4 flex flex-wrap gap-3">
@@ -181,6 +228,16 @@ export default function LibraryPage() {
           >
             {statuses.map((s) => <option key={s}>{s}</option>)}
           </select>
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(e.target.value === "All" ? "All" : Number(e.target.value))}
+            className="rounded-sm border border-[#E3DFEE] bg-white px-3 py-2 text-sm text-[#1E1A2E]"
+          >
+            <option value="10">Show: 10</option>
+            <option value="25">Show: 25</option>
+            <option value="50">Show: 50</option>
+            <option value="All">Show: All</option>
+          </select>
           {(search || filterEng !== "All" || filterType !== "All" || filterStatus !== "All") && (
             <button
               onClick={() => { setSearch(""); setFilterEng("All"); setFilterType("All"); setFilterStatus("All"); }}
@@ -200,7 +257,7 @@ export default function LibraryPage() {
         )}
         {!loading && !error && (
           <div className="overflow-hidden rounded-sm border border-[#E3DFEE] bg-white">
-            {filtered.length === 0 ? (
+            {visible.length === 0 ? (
               <div className="px-6 py-12 text-center text-sm text-[#1E1A2E]/40">
                 No articles found. Generate and save one from the Article Creator at http://localhost:3000.
               </div>
@@ -221,28 +278,36 @@ export default function LibraryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((a, i) => (
+                  {visible.map((a, i) => (
                     <tr
                       key={a.id}
                       className={`border-b border-[#E3DFEE] last:border-0 hover:bg-[#F7F6FB] transition ${
                         i % 2 === 0 ? "bg-white" : "bg-[#FAFAFA]"
                       }`}
                     >
-                      <td className="px-4 py-3 font-mono text-xs text-[#7B3F87] cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{a.id}</td>
-                      <td className="px-4 py-3 font-medium text-[#1E1A2E] max-w-[260px] truncate cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{a.title}</td>
-                      <td className="px-4 py-3 text-[#1E1A2E]/70 cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{a.engineer_name || "—"}</td>
-                      <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>
+                      <td className="px-4 py-3 font-mono text-xs text-[#7B3F87] cursor-pointer" onClick={() => window.location.href = rowHref(a)}>{a.id}</td>
+                      <td className="px-4 py-3 font-medium text-[#1E1A2E] max-w-[260px] truncate cursor-pointer" onClick={() => window.location.href = rowHref(a)}>{a.title}</td>
+                      <td className="px-4 py-3 text-[#1E1A2E]/70 cursor-pointer" onClick={() => window.location.href = rowHref(a)}>{a.engineer_name || "—"}</td>
+                      <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = rowHref(a)}>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide ${AUDIENCE_STYLES[a.audience] || "bg-gray-100 text-gray-600"}`}>
                           {a.audience}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-[#1E1A2E]/60 text-xs cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{a.issue_type || "—"}</td>
-                      <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>
+                      <td className="px-4 py-3 text-[#1E1A2E]/60 text-xs cursor-pointer" onClick={() => window.location.href = rowHref(a)}>{a.issue_type || "—"}</td>
+                      <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = rowHref(a)}>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide ${STATUS_STYLES[a.status] || "bg-gray-100 text-gray-600"}`}>
                           {a.status}
                         </span>
+                        {a.status === "draft" && (() => {
+                          const ageDays = Math.floor((Date.now() - new Date(a.created_at).getTime()) / 86400000);
+                          return ageDays >= 7 ? (
+                            <span className="ml-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-mono text-red-600" title="This draft is getting old">
+                              {ageDays}d old
+                            </span>
+                          ) : null;
+                        })()}
                       </td>
-                      <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>
+                      <td className="px-4 py-3 cursor-pointer" onClick={() => window.location.href = rowHref(a)}>
                         <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
                           (a.current_version ?? 1) > 1
                             ? "bg-[#7B3F87]/10 text-[#4B2170]"
@@ -251,8 +316,8 @@ export default function LibraryPage() {
                           v{a.current_version ?? 1}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{fmt(a.created_at)}</td>
-                      <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = `/library/${a.id}`}>{fmt(a.updated_at)}</td>
+                      <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = rowHref(a)}>{fmt(a.created_at)}</td>
+                      <td className="px-4 py-3 text-[#1E1A2E]/50 text-xs cursor-pointer" onClick={() => window.location.href = rowHref(a)}>{fmt(a.updated_at)}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
                         <button
@@ -263,6 +328,33 @@ export default function LibraryPage() {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => exportDocxFromRow(e, a.id)}
+                          disabled={exportingDocx === a.id}
+                          title="Download Word"
+                          className="rounded p-1.5 text-[#1E1A2E]/30 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-40 transition"
+                        >
+                          {exportingDocx === a.id ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                              <path d="M9 13h1l1 4 1-4h1l1 4 1-4h1"/>
+                            </svg>
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); window.open(`/library/${a.id}?autoexport=pdf`, "_blank"); }}
+                          title="Download PDF"
+                          className="rounded p-1.5 text-[#1E1A2E]/30 hover:bg-red-50 hover:text-red-600 transition"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <text x="7" y="18" fontSize="7" fill="currentColor" stroke="none">PDF</text>
                           </svg>
                         </button>
                         <button
@@ -293,7 +385,7 @@ export default function LibraryPage() {
       </div>
 
       {/* Footer */}
-      <footer className="mt-16 bg-black px-6 py-6 text-xs text-white/50">
+      <footer className="bg-black px-6 py-6 text-xs text-white/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <span>© {new Date().getFullYear()} Commvault · Clumio Atlas</span>
           <span>Internal use only</span>

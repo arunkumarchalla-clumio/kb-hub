@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     syncFromJson();
 
     const body = await req.json();
-    const { ticket, fields, markdown } = body;
+    const { ticket, fields, markdown, status } = body;
 
     if (!ticket || !fields || !markdown) {
       return NextResponse.json(
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const finalStatus = status === "draft" ? "draft" : "published";
     saveArticle({
       id: ticket,
       title: fields.title || "(untitled)",
@@ -25,14 +26,14 @@ export async function POST(req: NextRequest) {
       entity_type: fields.primaryEntityType || "",
       category: fields.category || "",
       product_version: fields.productVersion || "",
-      status: "published",
+      status: finalStatus,
       symptoms: fields.symptoms || "",
       cause: fields.cause || "",
       resolution: fields.resolutionSteps || "",
       keywords: fields.keywords || "",
       markdown_content: markdown,
       use_aws_docs: fields.useAwsDocs ? 1 : 0,
-      published_at: new Date().toISOString(),
+      published_at: finalStatus === "published" ? new Date().toISOString() : null,
     });
 
     return NextResponse.json({ success: true, id: ticket });

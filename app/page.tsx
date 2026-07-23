@@ -224,7 +224,7 @@ useEffect(() => {
       const res = await fetch("/api/library/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticket, fields, markdown }),
+        body: JSON.stringify({ ticket, fields, markdown, status: "published" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Save failed");
@@ -234,6 +234,20 @@ useEffect(() => {
       }, 1500);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to save article.");
+    }
+  }
+
+  async function handleSaveDraft() {
+    try {
+      const res = await fetch("/api/library/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticket, fields, markdown, status: "draft" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Save failed");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save draft.");
     }
   }
 
@@ -262,7 +276,7 @@ useEffect(() => {
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="flex min-h-screen flex-col">
       <header className="bg-black px-6 py-4 text-white md:px-10">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <button
@@ -345,6 +359,7 @@ useEffect(() => {
           onRegenerate={handleRefreshRegenerate}
           onNewArticle={newArticle}
           onSave={handleSave}
+          onSaveDraft={handleSaveDraft}
         />
       </div>
 
